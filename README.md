@@ -83,14 +83,22 @@ User Input (Company Ticker + Forecast Period)
 ## Project Structure
 
 ```
-├── index.html              # Frontend dashboard (landing, auth, valuation UI)
+Minor 2/
+├── index.html              # Clean HTML skeleton (UI structure only)
+├── css/
+│   └── style.css           # All styling
+├── js/
+│   ├── data.js             # Company data handling
+│   ├── charts.js           # Chart.js visualization logic
+│   ├── dashboard.js        # Sidebar + dashboard rendering
+│   └── auth.js             # Login, register, session management
 ├── backend/
-│   ├── server.js           # Express API — register, login, email notifications
+│   ├── server.js           # Express API + user persistence (/me endpoint)
 │   ├── package.json
 │   ├── package-lock.json
-│   └── .env.example        # Template for environment variables
+│   └── .env.example        # Environment variables template
 └── ESG extractor/
-    ├── esg_extractor.py    # NLP pipeline for BRSR report processing
+    ├── esg_extractor.py    # NLP pipeline for ESG/BRSR processing
     └── ...
 ```
 
