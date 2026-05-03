@@ -1,5 +1,40 @@
+/*
+ * backend/server.js
+ * ─────────────────────────────────────────────────────────────
+ * PURPOSE: Express backend for ValuESG.
+ *
+ * ROUTES:
+ *   POST /register  — create account, send welcome email
+ *   POST /login     — validate credentials, send login notification
+ *   GET  /ping      — health check
+ *   GET  /me        — verify session token (optional, for future use)
+ *
+ * USER PERSISTENCE:
+ *   Users are stored in users.json (same folder as this file).
+ *   The file is read on startup and written on every register.
+ *   This means user accounts survive server restarts — unlike
+ *   the old in-memory `const users = []` approach.
+ *
+ * SESSION PERSISTENCE:
+ *   The browser stores the logged-in user in localStorage.
+ *   So even if the server restarts, the user stays "logged in"
+ *   on the frontend. When they interact again the server still
+ *   recognises them because their account is in users.json.
+ *
+ * EMAIL:
+ *   Uses Resend (https://resend.com) — free tier sends 100/day.
+ *   Set RESEND_API_KEY in your .env file.
+ *
+ * STATIC FILES:
+ *   Serves index.html and all frontend files from the parent
+ *   folder (Minor 2/). Open http://localhost:3000 to use the app.
+ * ─────────────────────────────────────────────────────────────
+ */
+
 const express = require('express');
 const cors    = require('cors');
+const fs      = require('fs');
+const path    = require('path');
 const { Resend } = require('resend');
 require('dotenv').config();
 
@@ -8,37 +43,72 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 
 app.use(cors());
 app.use(express.json());
-app.use(express.static('.'));
 
-// ─── IN-MEMORY STORE ──────────────────────────────────────────────────────────
-const users = [];
+// Serve the entire Minor 2 folder as static files.
+// This means http://localhost:3000 → index.html
+// and http://localhost:3000/css/style.css etc. all work.
+app.use(express.static(path.join(__dirname, '..')));
 
-// ─── SENDER ───────────────────────────────────────────────────────────────────
-const FROM_ADDRESS = 'ValuESG <onboarding@resend.dev>';
+// ── USER PERSISTENCE (users.json) ────────────────────────────
+const USERS_FILE = path.join(__dirname, 'users.json');
 
-// ─── EMAIL HELPERS ─────────────────────────────────────────────────────────────
+// Load existing users from disk on startup.
+// If the file doesn't exist yet, start with an empty array.
+function loadUsers() {
+  if (!fs.existsSync(USERS_FILE)) return [];
+  try {
+    return JSON.parse(fs.readFileSync(USERS_FILE, 'utf8'));
+  } catch(e) {
+    console.error('⚠  Could not parse users.json — starting fresh.');
+    return [];
+  }
+}
+
+// Write the current users array to disk.
+// Called after every successful register.
+function saveUsers(users) {
+  try {
+    fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2));
+  } catch(e) {
+    console.error('⚠  Could not write users.json:', e.message);
+  }
+}
+
+// Load on startup — survives server restarts
+let users = loadUsers();
+console.log(`👥 Loaded ${users.length} user(s) from users.json`);
+
+// ── EMAIL SENDER ADDRESS ──────────────────────────────────────
+// Resend free tier only allows sending FROM onboarding@resend.dev
+// unless you verify your own domain at resend.com/domains.
+const FROM = 'ValuESG <onboarding@resend.dev>';
+
+// ── EMAIL: WELCOME ────────────────────────────────────────────
 async function sendWelcomeEmail(toEmail, name) {
   const { error } = await resend.emails.send({
-    from:    FROM_ADDRESS,
+    from:    FROM,
     to:      toEmail,
     subject: 'Welcome to ValuESG 🌱',
     html: `
-      <div style="font-family:sans-serif;max-width:520px;margin:0 auto;background:#0a0b0b;color:#e2e8e8;padding:2rem;border-radius:10px;">
+      <div style="font-family:sans-serif;max-width:520px;margin:0 auto;
+                  background:#0a0b0b;color:#e2e8e8;padding:2rem;border-radius:10px;">
         <h2 style="color:#00c896;font-family:monospace;">VALU/ESG</h2>
         <h3>Welcome, ${name}! 👋</h3>
         <p style="color:#8a9090;line-height:1.7;">
-          You now have access to AI-powered corporate valuation integrating ESG factors from
-          SEBI-mandated BRSR reports.
+          You now have access to AI-powered corporate valuation integrating ESG factors
+          from SEBI-mandated BRSR reports.
         </p>
-        <p style="color:#8a9090;line-height:1.7;">Here's what you can do:</p>
+        <p style="color:#8a9090;line-height:1.7;">What you can explore:</p>
         <ul style="color:#8a9090;line-height:2;">
-          <li>Browse ESG scores derived from BRSR filings</li>
-          <li>Set a custom forecast horizon (1–10 years)</li>
-          <li>View DCF intrinsic value with Monte Carlo distribution</li>
-          <li>Compare E, S, G pillars across companies</li>
+          <li>ESG scores derived from BRSR filings (E, S, G breakdown)</li>
+          <li>Custom forecast horizon — set any number of years</li>
+          <li>DCF intrinsic value with Monte Carlo distribution (P5/P50/P95)</li>
+          <li>Revenue, EBITDA, and Free Cash Flow projections</li>
         </ul>
         <a href="http://localhost:3000"
-           style="display:inline-block;margin-top:1.2rem;background:#00c896;color:#040909;padding:.6rem 1.4rem;border-radius:6px;font-family:monospace;font-size:.85rem;text-decoration:none;font-weight:600;">
+           style="display:inline-block;margin-top:1.2rem;background:#00c896;color:#040909;
+                  padding:.6rem 1.4rem;border-radius:6px;font-family:monospace;
+                  font-size:.85rem;text-decoration:none;font-weight:600;">
           OPEN PLATFORM →
         </a>
         <p style="margin-top:2rem;color:#3a4040;font-size:.75rem;font-family:monospace;">
@@ -50,52 +120,31 @@ async function sendWelcomeEmail(toEmail, name) {
   if (error) throw new Error(error.message);
 }
 
-async function sendLoginEmail(toEmail, name) {
-  const { error } = await resend.emails.send({
-    from:    FROM_ADDRESS,
-    to:      toEmail,
-    subject: 'ValuESG — New Sign In Detected',
-    html: `
-      <div style="font-family:sans-serif;max-width:520px;margin:0 auto;background:#0a0b0b;color:#e2e8e8;padding:2rem;border-radius:10px;">
-        <h2 style="color:#00c896;font-family:monospace;">VALU/ESG</h2>
-        <h3>Welcome back, ${name}! 👋</h3>
-        <p style="color:#8a9090;line-height:1.7;">
-          A new sign-in to your ValuESG account was just detected.
-          If this was you, no action is needed.
-        </p>
-        <a href="http://localhost:3000"
-           style="display:inline-block;margin-top:1.2rem;background:#00c896;color:#040909;padding:.6rem 1.4rem;border-radius:6px;font-family:monospace;font-size:.85rem;text-decoration:none;font-weight:600;">
-          OPEN PLATFORM →
-        </a>
-        <p style="margin-top:2rem;color:#3a4040;font-size:.75rem;font-family:monospace;">
-          ValuESG · AI-Driven Corporate Valuation · JIIT Minor Project
-        </p>
-      </div>
-    `,
-  });
-  if (error) throw new Error(error.message);
-}
-
+// ── EMAIL: ANNUAL BRSR REMINDER ───────────────────────────────
+// Sent 1 year after registration to invite the user back.
 async function sendAnniversaryEmail(toEmail, name) {
   const year = new Date().getFullYear();
   const { error } = await resend.emails.send({
-    from:    FROM_ADDRESS,
+    from:    FROM,
     to:      toEmail,
     subject: `ValuESG — New BRSR Reports May Be Available (${year})`,
     html: `
-      <div style="font-family:sans-serif;max-width:520px;margin:0 auto;background:#0a0b0b;color:#e2e8e8;padding:2rem;border-radius:10px;">
+      <div style="font-family:sans-serif;max-width:520px;margin:0 auto;
+                  background:#0a0b0b;color:#e2e8e8;padding:2rem;border-radius:10px;">
         <h2 style="color:#00c896;font-family:monospace;">VALU/ESG</h2>
         <h3>Hi ${name} — it's been a year! 🗓</h3>
         <p style="color:#8a9090;line-height:1.7;">
-          Companies are required to publish their BRSR reports for FY ${year} by
-          the end of Q1. The companies you explored last year may now have updated
-          ESG disclosures and revised financial data.
+          Companies publish their BRSR reports for FY ${year} by the end of Q1.
+          The companies you explored last year may now have updated ESG disclosures
+          and revised financial data.
         </p>
         <p style="color:#8a9090;line-height:1.7;">
           Come back and check updated valuations, ESG scores, and forecasts.
         </p>
         <a href="http://localhost:3000"
-           style="display:inline-block;margin-top:1.2rem;background:#00c896;color:#040909;padding:.6rem 1.4rem;border-radius:6px;font-family:monospace;font-size:.85rem;text-decoration:none;font-weight:600;">
+           style="display:inline-block;margin-top:1.2rem;background:#00c896;color:#040909;
+                  padding:.6rem 1.4rem;border-radius:6px;font-family:monospace;
+                  font-size:.85rem;text-decoration:none;font-weight:600;">
           CHECK UPDATES →
         </a>
         <p style="margin-top:2rem;color:#3a4040;font-size:.75rem;font-family:monospace;">
@@ -107,9 +156,40 @@ async function sendAnniversaryEmail(toEmail, name) {
   if (error) throw new Error(error.message);
 }
 
-// ─── ROUTES ────────────────────────────────────────────────────────────────────
+// ── EMAIL: LOGIN NOTIFICATION ─────────────────────────────────
+async function sendLoginEmail(toEmail, name) {
+  const { error } = await resend.emails.send({
+    from:    FROM,
+    to:      toEmail,
+    subject: 'ValuESG — New Sign In Detected',
+    html: `
+      <div style="font-family:sans-serif;max-width:520px;margin:0 auto;
+                  background:#0a0b0b;color:#e2e8e8;padding:2rem;border-radius:10px;">
+        <h2 style="color:#00c896;font-family:monospace;">VALU/ESG</h2>
+        <h3>Welcome back, ${name}! 👋</h3>
+        <p style="color:#8a9090;line-height:1.7;">
+          A new sign-in to your ValuESG account was just detected.
+          If this was you, no action is needed.
+        </p>
+        <a href="http://localhost:3000"
+           style="display:inline-block;margin-top:1.2rem;background:#00c896;color:#040909;
+                  padding:.6rem 1.4rem;border-radius:6px;font-family:monospace;
+                  font-size:.85rem;text-decoration:none;font-weight:600;">
+          OPEN PLATFORM →
+        </a>
+        <p style="margin-top:2rem;color:#3a4040;font-size:.75rem;font-family:monospace;">
+          ValuESG · AI-Driven Corporate Valuation · JIIT Minor Project
+        </p>
+      </div>
+    `,
+  });
+  if (error) throw new Error(error.message);
+}
+
+// ── ROUTES ────────────────────────────────────────────────────
 
 // POST /register
+// Creates a new user account, saves to users.json, sends welcome email.
 app.post('/register', async (req, res) => {
   const { name, email, password } = req.body;
 
@@ -123,20 +203,25 @@ app.post('/register', async (req, res) => {
   const newUser = {
     name,
     email,
-    password,
+    password,          // TODO: hash with bcrypt before production deployment
     registeredAt: Date.now(),
+    // One year from now — when this timestamp passes on login, send reminder
     remindAt: Date.now() + 365 * 24 * 60 * 60 * 1000,
   };
-  users.push(newUser);
 
+  users.push(newUser);
+  saveUsers(users);    // ← writes to users.json immediately
+
+  // Send welcome email (fire-and-forget — don't block the response)
   sendWelcomeEmail(email, name)
     .then(() => console.log(`✉  Welcome email sent → ${email}`))
-    .catch(err  => console.error('Welcome email failed:', err.message));
+    .catch(err => console.error('Welcome email failed:', err.message));
 
   return res.status(201).json({ name, email });
 });
 
 // POST /login
+// Validates credentials against users.json, sends login notification.
 app.post('/login', (req, res) => {
   const { email, password } = req.body;
 
@@ -147,17 +232,19 @@ app.post('/login', (req, res) => {
   if (!user)
     return res.status(401).json({ error: 'Invalid email or password.' });
 
-  // Anniversary reminder (once a year)
+  // Check if 1 year has passed since registration → send annual reminder
   if (user.remindAt && Date.now() >= user.remindAt) {
     sendAnniversaryEmail(user.email, user.name)
       .then(() => {
+        // Reset timer to 1 year from now and persist
         user.remindAt = Date.now() + 365 * 24 * 60 * 60 * 1000;
+        saveUsers(users);
         console.log(`✉  Anniversary reminder sent → ${user.email}`);
       })
       .catch(err => console.error('Reminder email failed:', err.message));
   }
 
-  // Login notification (every sign in)
+  // Login notification email (every sign-in)
   sendLoginEmail(user.email, user.name)
     .then(() => console.log(`✉  Login email sent → ${user.email}`))
     .catch(err => console.error('Login email failed:', err.message));
@@ -165,17 +252,26 @@ app.post('/login', (req, res) => {
   return res.json({ name: user.name, email: user.email });
 });
 
-// GET /ping
+// GET /ping — health check
 app.get('/ping', (_, res) => res.json({ status: 'ok', users: users.length }));
 
-// ─── START ─────────────────────────────────────────────────────────────────────
+// GET /me — verify a stored session (useful when connecting a real token later)
+app.get('/me', (req, res) => {
+  const email = req.query.email;
+  const user  = users.find(u => u.email === email);
+  if (!user) return res.status(404).json({ error: 'User not found.' });
+  return res.json({ name: user.name, email: user.email });
+});
+
+// ── START ─────────────────────────────────────────────────────
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`🚀 Server → http://localhost:${PORT}`);
-  console.log('   POST /register  POST /login  GET /ping');
+  console.log(`\n🚀 Server → http://localhost:${PORT}`);
+  console.log('   Routes: POST /register  POST /login  GET /ping  GET /me');
+  console.log('   Frontend: open http://localhost:3000\n');
 
   if (!process.env.RESEND_API_KEY) {
-    console.warn('⚠  RESEND_API_KEY not set — emails will fail silently.');
+    console.warn('⚠  RESEND_API_KEY not set in .env — emails will fail silently.');
   } else {
     console.log('✉  Resend API key loaded — emails ready.');
   }

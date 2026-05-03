@@ -1,0 +1,99 @@
+{
+  "metadata": {
+    "company": "Infosys",
+    "year": "2024",
+    "pdf_path": "infosys-ar-24.pdf",
+    "pages_processed": 352
+  },
+  "environmental": {
+    "scope_1_emissions_tco2e": null,
+    "scope_2_emissions_tco2e": null,
+    "scope_3_emissions_tco2e": 2.0,
+    "total_ghg_emissions_tco2e": null,
+    "carbon_intensity_per_employee": null,
+    "total_energy_consumption_gj": null,
+    "renewable_energy_percent": null,
+    "energy_intensity_per_employee": 2024.0,
+    "water_withdrawal_kiloliters": null,
+    "water_recycled_percent": null,
+    "total_waste_generated_tonnes": null,
+    "waste_recycled_percent": null,
+    "hazardous_waste_tonnes": null
+  },
+  "social": {
+    "total_employees": null,
+    "employees_with_disability": null,
+    "nationalities_in_workforce": null,
+    "ai_aware_employees": 12780.0,
+    "fresh_graduates_hired": null,
+    "male_employees": 192671.0,
+    "female_employees": 124569.0,
+    "attrition_rate_percent": 12.6,
+    "new_hires": null,
+    "employee_satisfaction_score_percent": null,
+    "avg_training_hours_per_employee": null,
+    "training_spend_inr_cr": null,
+    "lost_time_injury_rate": 3.0,
+    "fatalities": null,
+    "health_safety_incidents": null,
+    "women_in_leadership_percent": null,
+    "csr_spend_inr_cr": 577.0
+  },
+  "governance": {
+    "total_board_members": 12.0,
+    "independent_directors_percent": 22.22,
+    "women_on_board": null,
+    "board_meetings_per_year": 1.0,
+    "has_esg_committee": true,
+    "has_audit_committee": true,
+    "has_csr_committee": true,
+    "policy_violations_reported": null,
+    "whistleblower_complaints": null,
+    "follows_gri": true,
+    "follows_brsr": true,
+    "follows_tcfd": true,
+    "follows_sdg": true
+  },
+  "financial": {
+    "revenue_inr_cr": 10814.0,
+    "revenue_growth_percent": 1.4,
+    "ebitda_inr_cr": null,
+    "ebitda_margin_percent": null,
+    "pat_inr_cr": 24608.45,
+    "pat_margin_percent": null,
+    "eps_inr": 20.7,
+    "dividend_per_share_inr": 2.0,
+    "total_assets_inr_cr": null,
+    "total_equity_inr_cr": 34.75,
+    "total_debt_inr_cr": 8283.0,
+    "debt_to_equity_ratio": null,
+    "operating_cash_flow_inr_cr": 29022.0,
+    "capex_inr_cr": null,
+    "free_cash_flow_inr_cr": null,
+    "roce_percent": 1.0,
+    "roe_percent": 32.1
+  },
+  "esg_tfidf_scores": {
+    "environmental_tfidf_score": 0.0,
+    "social_tfidf_score": 0.0,
+    "governance_tfidf_score": 0.0,
+    "composite_esg_score": 0.0
+  },
+  "greenwashing_analysis": {
+    "greenwashing_flag_count": 1,
+    "missing_data_count": 262,
+    "greenwashing_risk": "LOW",
+    "sample_flags": [
+      {
+        "type": "vague_aspirational_language",
+        "phrase": "aim to achieve"
+      }
+    ]
+  },
+  "extraction_summary": {
+    "environmental_coverage": "2/13 fields extracted",
+    "social_coverage": "6/17 fields extracted",
+    "governance_coverage": "10/13 fields extracted",
+    "financial_coverage": "10/17 fields extracted"
+  }
+}
