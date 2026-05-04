@@ -17,20 +17,23 @@
 let ch1 = null, ch2 = null, ch3 = null;
 
 // ── SHARED CHART STYLE CONSTANTS ─────────────────────────────
-// Tooltip style matching the dark theme
+// Tooltip style matching the light theme
 const TT = {
-  backgroundColor: 'rgba(10,11,11,.96)',
-  borderColor:     'rgba(255,255,255,.07)',
+  backgroundColor: 'rgba(255,255,255,.98)',
+  borderColor:     'rgba(0,0,0,.1)',
   borderWidth: 1,
-  titleColor:  '#00c896',
-  titleFont:   { family: 'JetBrains Mono', size: 11 },
-  bodyColor:   '#e2e8e8',
-  bodyFont:    { family: 'JetBrains Mono', size: 10 },
+  titleColor:  '#00a87d',
+  titleFont:   { family: 'JetBrains Mono', size: 14, weight: 'bold' },
+  bodyColor:   '#1a1d1d',
+  bodyFont:    { family: 'JetBrains Mono', size: 12 },
+  padding: 12,
+  cornerRadius: 8,
+  displayColors: true
 };
 // Axis tick style
-const TX = { color: '#5a6060', font: { size: 10 } };
+const TX = { color: '#6a7070', font: { size: 12, weight: '500' } };
 // Grid line style
-const GR = { color: 'rgba(255,255,255,.04)' };
+const GR = { color: 'rgba(0,0,0,.05)', drawBorder: false };
 
 // ── HELPERS ───────────────────────────────────────────────────
 

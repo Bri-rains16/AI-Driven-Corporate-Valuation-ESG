@@ -1,3 +1,91 @@
+# =========================
+# Node.js
+# =========================
 node_modules/
+npm-debug.log
+yarn-error.log
+yarn-debug.log
+.pnp.*
+
+# =========================
+# Python
+# =========================
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual Environments
+venv/
+env/
+valuation_env/
+ENV/
+env.bak/
+venv.bak/
+.venv/
+**/venv/
+**/.venv/
+
+#testing output
+test_output.txt
+python_engine/help.txt
+#testing scripts
+scripts/testing scripts/
+#testing data
+data/testing data/
+data/yfinance_engineered_financials.csv
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+.eggs/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# =========================
+# Environment Variables
+# =========================
 .env
-test-email.js
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.env
+
+# =========================
+# OS & Editor Files
+# =========================
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# IDEs
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+*.swo
+
+# =========================
+# Data & Logs
+# =========================
+*.log
+logs/
+# Note: If you want to track your CSV files, comment out the line below.
+# Otherwise, it's good practice to ignore large data files.
+*.csv
+# *.sqlite
+# *.db
+users.json
+**/users.json
+*.users.json

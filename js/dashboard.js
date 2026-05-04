@@ -19,17 +19,20 @@ const esgCls = score => score >= 75 ? 'hi' : score >= 65 ? 'md' : 'lo';
 // ── BUILD COMPANY LIST ────────────────────────────────────────
 // Renders the sidebar list. Pass a filtered subset for search.
 function buildList(arr) {
-  document.getElementById('co-list').innerHTML = arr.map(c => `
-    <div class="co-item ${STATE.co?.id === c.id ? 'on' : ''}"
-         id="ci-${c.id}" onclick="loadCo('${c.id}')">
-      <div style="display:flex;align-items:center;justify-content:space-between">
+  const listEl = document.getElementById('co-list');
+  if (arr.length === 0) {
+    listEl.innerHTML = '<div style="padding:3rem;text-align:center;color:var(--sub);font-size:1rem;">No companies found</div>';
+    return;
+  }
+
+  listEl.innerHTML = arr.map(c => `
+    <div class="co-item ${STATE.selectedTicker === c.ticker ? 'active' : ''}"
+         id="ci-${c.id}" onclick="loadCo('${c.ticker}')">
+      <div class="co-info">
         <div class="co-name">${c.name.split(' ').slice(0, 2).join(' ')}</div>
-        <span class="esg-pill ${esgCls(c.esg.t)}">${c.esg.t}</span>
+        <div class="co-ticker">${c.ticker} · ${c.sector}</div>
       </div>
-      <div class="co-meta">
-        <span>${c.ticker}</span>
-        <span>${c.sector}</span>
-      </div>
+      <span class="esg-pill md">••</span>
     </div>
   `).join('');
 }
@@ -40,10 +43,10 @@ function filterCos(query) {
   const q = query.toLowerCase();
   const filtered = q
     ? COS.filter(c =>
-        c.name.toLowerCase().includes(q) ||
-        c.ticker.toLowerCase().includes(q) ||
-        c.sector.toLowerCase().includes(q)
-      )
+      c.name.toLowerCase().includes(q) ||
+      c.ticker.toLowerCase().includes(q) ||
+      c.sector.toLowerCase().includes(q)
+    )
     : COS;
   buildList(filtered);
 }
@@ -51,49 +54,92 @@ function filterCos(query) {
 // ── LOAD COMPANY ──────────────────────────────────────────────
 // Called when a company is clicked in the sidebar.
 // Updates STATE.co, highlights sidebar item, shows detail view.
-function loadCo(id) {
-  const company = COS.find(c => c.id === id);
-  if (!company) return;
+async function loadCo(ticker) {
+  const companyMeta = COS.find(c => c.ticker === ticker);
+  if (!companyMeta) return;
 
-  STATE.co = company;
+  STATE.selectedTicker = ticker;
+  STATE.co = null; // Clear old data
 
   // Highlight selected item in sidebar
-  document.querySelectorAll('.co-item').forEach(el => el.classList.remove('on'));
-  document.getElementById('ci-' + id)?.classList.add('on');
+  document.querySelectorAll('.co-item').forEach(el => el.classList.remove('active'));
+  document.getElementById(`ci-${companyMeta.id}`)?.classList.add('active');
 
-  // Show detail panel
+  // Show detail panel and basic info
   document.getElementById('empty').style.display = 'none';
-  document.getElementById('view').style.display  = 'block';
+  document.getElementById('view').style.display = 'block';
 
-  renderAll();
+  // Update basic info so it doesn't look empty
+  document.getElementById('bc').textContent = ticker;
+  document.getElementById('v-sector').textContent = companyMeta.sector.toUpperCase();
+  document.getElementById('v-name').textContent = companyMeta.name;
+  document.getElementById('v-sub').textContent = `${ticker} · Pending Calculation...`;
+
+  // Reset metrics to show they are pending
+  document.querySelectorAll('.m-val, .dc-val, .ring-val').forEach(el => el.textContent = '---');
+  document.getElementById('ring-arc').style.strokeDashoffset = 264;
+
+  toast(`Selected ${ticker}. Click GO to start ${STATE.yrs}-year prediction.`);
+}
+
+/**
+ * The actual prediction engine runner.
+ */
+async function runValuation(ticker) {
+  const companyMeta = COS.find(c => c.ticker === ticker);
+  if (!companyMeta) return;
+
+  // Show loading state
+  document.getElementById('view').classList.add('loading');
+  toast(`Calculating AI Valuation for ${ticker} (${STATE.yrs} yrs)...`);
+
+  try {
+    const valuationData = await fetchValuation(ticker, STATE.yrs);
+    if (valuationData) {
+      valuationData.sector = companyMeta.sector;
+      valuationData.name = companyMeta.name;
+      STATE.co = valuationData;
+      renderAll();
+      toast('Valuation complete!');
+    } else {
+      toast('⚠ Could not get valuation from server');
+    }
+  } catch (err) {
+    console.error('Valuation error:', err);
+    toast('Error during valuation calculation.');
+  } finally {
+    document.getElementById('view').classList.remove('loading');
+  }
 }
 
 // ── RENDER ALL COMPANY DATA ───────────────────────────────────
 // Populates every field in the detail view then renders charts.
 function renderAll() {
   const c = STATE.co;
+  if (!c) return;
+  console.log('Rendering company data:', c);
 
   // Breadcrumb
   document.getElementById('bc').textContent = c.ticker;
 
   // Company header
+  document.getElementById('v-sector').textContent = c.sector.toUpperCase();
   document.getElementById('v-name').textContent = c.name;
-  document.getElementById('v-sub').textContent  = `${c.ticker} · ${c.sector} · ${c.brsr}`;
+  document.getElementById('v-sub').textContent = `${c.ticker} · ${c.brsr}`;
 
-  // Badges
-  const gwCls = (c.gw === 'None' || c.gw === 'Low') ? 'bg' : 'ba';
-  document.getElementById('v-badges').innerHTML = `
-    <span class="badge bg">ESG ${c.esg.t}/100</span>
-    <span class="badge ${gwCls}">Greenwash: ${c.gw}</span>
-    <span class="badge bb">BRSR ${c.brsr}</span>
-  `;
+  // ESG ring
+  const arc = document.getElementById('ring-arc');
+  const score = Math.round(c.esg.t); // Use mapped esg.t
+  const offset = 226 - (226 * score) / 100; // Stroke dasharray is 226 in index.html
+  arc.style.strokeDashoffset = offset;
+  document.getElementById('ring-v').textContent = score;
+  document.getElementById('v-rating').textContent = score >= 70 ? 'STRONG ESG' : score >= 50 ? 'STABLE' : 'RISK-WATCH';
+  document.getElementById('v-rating').style.color = score >= 70 ? 'var(--green)' : score >= 50 ? 'var(--amber)' : 'var(--red)';
 
-  // ESG ring animation
-  document.getElementById('ring-arc').style.strokeDashoffset = 226 - (c.esg.t / 100) * 226;
-  document.getElementById('ring-v').textContent = c.esg.t + '/100';
-  document.getElementById('e-v').textContent    = c.esg.e;
-  document.getElementById('s-v').textContent    = c.esg.s;
-  document.getElementById('g-v').textContent    = c.esg.g;
+  // ESG Pillars
+  document.getElementById('e-v').textContent = c.esg.e;
+  document.getElementById('s-v').textContent = c.esg.s;
+  document.getElementById('g-v').textContent = c.esg.g;
 
   // Animate bar fills after a tiny delay so CSS transition plays
   setTimeout(() => {
@@ -103,24 +149,24 @@ function renderAll() {
   }, 60);
 
   // Metric cards
-  document.getElementById('m-iv').textContent   = '₹ ' + c.dcf.iv.toLocaleString('en-IN');
+  document.getElementById('m-iv').textContent = '₹ ' + c.dcf.iv.toLocaleString('en-IN');
   const up = c.dcf.up;
   document.getElementById('m-up').innerHTML = `
     <span class="${up >= 0 ? 'up' : 'dn'}">
       ${up >= 0 ? '▲' : '▼'} ${Math.abs(up)}% vs CMP ₹${c.dcf.cmp.toLocaleString('en-IN')}
     </span>`;
   document.getElementById('m-wacc').textContent = c.dcf.wacc + '%';
-  document.getElementById('m-tg').textContent   = c.dcf.tg   + '%';
-  document.getElementById('m-p50').textContent  = '₹ ' + c.mc.p50.toLocaleString('en-IN');
+  document.getElementById('m-tg').textContent = c.dcf.tg + '%';
+  document.getElementById('m-p50').textContent = '₹ ' + c.mc.p50.toLocaleString('en-IN');
 
   // DCF summary cards
-  document.getElementById('dc-iv').textContent  = '₹ ' + c.dcf.iv.toLocaleString('en-IN');
-  document.getElementById('dc-p5').textContent  = '₹ ' + c.mc.p5.toLocaleString('en-IN');
+  document.getElementById('dc-iv').textContent = '₹ ' + c.dcf.iv.toLocaleString('en-IN');
+  document.getElementById('dc-p5').textContent = '₹ ' + c.mc.p5.toLocaleString('en-IN');
   document.getElementById('dc-p95').textContent = '₹ ' + c.mc.p95.toLocaleString('en-IN');
 
   // Forecast label in chart header
   document.getElementById('fc-lbl').textContent = STATE.yrs;
-  document.getElementById('fc-n').value         = STATE.yrs;
+  document.getElementById('fc-n').value = STATE.yrs;
 
   // Render the three Chart.js charts
   renderCharts();
@@ -129,12 +175,23 @@ function renderAll() {
 // ── FORECAST YEAR INPUT ───────────────────────────────────────
 // Called by the GO button in the topbar.
 // Clamps value to 1–30, updates STATE.yrs, re-renders charts.
-function goFC() {
+async function goFC() {
   const input = document.getElementById('fc-n');
   const v = parseInt(input.value);
   STATE.yrs = Math.max(1, Math.min(30, isNaN(v) ? 5 : v));
   input.value = STATE.yrs;
   document.getElementById('fc-lbl').textContent = STATE.yrs;
-  if (STATE.co) renderCharts();
-  toast(`${STATE.yrs}-year forecast applied`);
+
+  if (STATE.selectedTicker) {
+    await runValuation(STATE.selectedTicker);
+  } else {
+    toast('Select a company first');
+  }
+}
+
+// ── INITIALIZATION ───────────────────────────────────────────
+// Called by auth.js when the dashboard is shown.
+async function initDashboard() {
+  const companies = await fetchCompanies();
+  buildList(companies);
 }

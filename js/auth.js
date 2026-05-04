@@ -7,12 +7,11 @@
  *   1. Page navigation (showLanding / showAuth / showDash)
  *   2. AUTH GUARD — showDash() blocks unauthenticated access
  *   3. Login & Register (calls backend server.js API)
- *   4. Google OAuth sign-in
- *   5. Session persistence via localStorage
+ *   4. Session persistence via localStorage
  *      → Session survives server restarts because it lives
  *        in the browser, not in server memory.
- *   6. Logout (clears session)
- *   7. Toast utility
+ *   5. Logout (clears session)
+ *   6. Toast utility
  *
  * LOADED LAST — depends on data.js, charts.js, dashboard.js
  * ─────────────────────────────────────────────────────────────
@@ -30,7 +29,6 @@ function showLanding() {
 
 function showAuth() {
   pg('auth');
-  initGoogle();
 }
 
 // AUTH GUARD: If no user is logged in, redirect to auth page.
@@ -41,7 +39,16 @@ function showDash() {
     return;
   }
   pg('dash');
-  buildList(COS); // build sidebar company list (from dashboard.js)
+  initDashboard(); // build sidebar company list dynamically (from dashboard.js)
+}
+
+// DEMO MODE: Skip authentication — enter dashboard as a guest user.
+function showDemo() {
+  STATE.user = { name: 'Demo User', email: 'demo@valuesg.app' };
+  applyUserUI();
+  pg('dash');
+  initDashboard();
+  toast('Demo mode — explore freely!');
 }
 
 // Switch visible page by ID (landing | auth | dash)
@@ -70,45 +77,6 @@ function loadSession() {
 
 function clearSession() {
   try { localStorage.removeItem(SESSION_KEY); } catch(e) {}
-}
-
-// ── GOOGLE OAUTH ──────────────────────────────────────────────
-let gReady = false;
-
-function initGoogle() {
-  const note = document.getElementById('g-note');
-  if (G_CLIENT_ID === 'YOUR_GOOGLE_CLIENT_ID_HERE') {
-    note.textContent = '⚠ Google Client ID not set — use email/password below';
-    return;
-  }
-  if (!window.google || gReady) return;
-  try {
-    google.accounts.id.initialize({ client_id: G_CLIENT_ID, callback: onGoogleCredential });
-    gReady = true;
-  } catch(e) {}
-}
-
-function handleGoogle() {
-  if (G_CLIENT_ID === 'YOUR_GOOGLE_CLIENT_ID_HERE') {
-    toast('Set G_CLIENT_ID in data.js to enable Google sign-in');
-    return;
-  }
-  if (!gReady) initGoogle();
-  try { google.accounts.id.prompt(); } catch(e) { toast('Google sign-in unavailable'); }
-}
-
-function onGoogleCredential(response) {
-  try {
-    // Decode the JWT payload (middle part of the token)
-    const payload = JSON.parse(atob(
-      response.credential.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')
-    ));
-    loginSuccess({
-      name:  payload.name  || payload.email.split('@')[0],
-      email: payload.email,
-      pic:   payload.picture || null,
-    });
-  } catch(e) { toast('Google sign-in failed'); }
 }
 
 // ── AUTH FORM TABS ────────────────────────────────────────────
@@ -174,7 +142,7 @@ async function doRegister() {
 }
 
 // ── ON SUCCESSFUL LOGIN ───────────────────────────────────────
-// Called after any successful auth (email login, register, Google).
+// Called after any successful auth (email login, register).
 function loginSuccess(u) {
   STATE.user = u;
   saveSession(u);   // persist in localStorage → survives server restarts
@@ -219,18 +187,16 @@ function toast(msg) {
   setTimeout(() => el.classList.remove('show'), 2800);
 }
 
-// ── BOOT — AUTO-LOGIN FROM SAVED SESSION ──────────────────────
-// Runs when the page loads. Restores session from localStorage.
-// If a session exists → go straight to dashboard (auth-guarded).
-// If not → show landing page.
+// ── BOOT — ALWAYS SHOW LANDING PAGE FIRST ─────────────────────
+// On page load, always show the landing (home) page.
+// If a saved session exists, restore user state silently so
+// "GET STARTED" / "SIGN IN" will skip auth and go to dashboard.
 document.addEventListener('DOMContentLoaded', () => {
   const saved = loadSession();
   if (saved?.email) {
     STATE.user = saved;
     applyUserUI();
-    showDash();
-    toast('Welcome back, ' + saved.name.split(' ')[0] + '!');
-  } else {
-    showLanding();
+    // Don't auto-redirect — always show landing first
   }
+  showLanding();
 });

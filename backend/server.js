@@ -32,13 +32,14 @@
  */
 
 const express = require('express');
-const cors    = require('cors');
-const fs      = require('fs');
-const path    = require('path');
+const cors = require('cors');
+const fs = require('fs');
+const path = require('path');
+const { spawn } = require('child_process');
 const { Resend } = require('resend');
 require('dotenv').config();
 
-const app    = express();
+const app = express();
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 app.use(cors());
@@ -58,7 +59,7 @@ function loadUsers() {
   if (!fs.existsSync(USERS_FILE)) return [];
   try {
     return JSON.parse(fs.readFileSync(USERS_FILE, 'utf8'));
-  } catch(e) {
+  } catch (e) {
     console.error('⚠  Could not parse users.json — starting fresh.');
     return [];
   }
@@ -69,7 +70,7 @@ function loadUsers() {
 function saveUsers(users) {
   try {
     fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2));
-  } catch(e) {
+  } catch (e) {
     console.error('⚠  Could not write users.json:', e.message);
   }
 }
@@ -86,8 +87,8 @@ const FROM = 'ValuESG <onboarding@resend.dev>';
 // ── EMAIL: WELCOME ────────────────────────────────────────────
 async function sendWelcomeEmail(toEmail, name) {
   const { error } = await resend.emails.send({
-    from:    FROM,
-    to:      toEmail,
+    from: FROM,
+    to: toEmail,
     subject: 'Welcome to ValuESG 🌱',
     html: `
       <div style="font-family:sans-serif;max-width:520px;margin:0 auto;
@@ -125,8 +126,8 @@ async function sendWelcomeEmail(toEmail, name) {
 async function sendAnniversaryEmail(toEmail, name) {
   const year = new Date().getFullYear();
   const { error } = await resend.emails.send({
-    from:    FROM,
-    to:      toEmail,
+    from: FROM,
+    to: toEmail,
     subject: `ValuESG — New BRSR Reports May Be Available (${year})`,
     html: `
       <div style="font-family:sans-serif;max-width:520px;margin:0 auto;
@@ -159,8 +160,8 @@ async function sendAnniversaryEmail(toEmail, name) {
 // ── EMAIL: LOGIN NOTIFICATION ─────────────────────────────────
 async function sendLoginEmail(toEmail, name) {
   const { error } = await resend.emails.send({
-    from:    FROM,
-    to:      toEmail,
+    from: FROM,
+    to: toEmail,
     subject: 'ValuESG — New Sign In Detected',
     html: `
       <div style="font-family:sans-serif;max-width:520px;margin:0 auto;
@@ -258,9 +259,82 @@ app.get('/ping', (_, res) => res.json({ status: 'ok', users: users.length }));
 // GET /me — verify a stored session (useful when connecting a real token later)
 app.get('/me', (req, res) => {
   const email = req.query.email;
-  const user  = users.find(u => u.email === email);
+  const user = users.find(u => u.email === email);
   if (!user) return res.status(404).json({ error: 'User not found.' });
   return res.json({ name: user.name, email: user.email });
+});
+
+// ── COMPANY REGISTRY ──────────────────────────────────────────
+// Shared with fusion_layer.py — maps ticker to name, sector, and PDF.
+const COMPANIES = [
+  { id: 'infy', name: 'Infosys Ltd',             ticker: 'INFY.NS',       sector: 'IT',        pdf: 'infosys-ar-24.pdf' },
+  { id: 'rel',  name: 'Reliance Industries Ltd', ticker: 'RELIANCE.NS',   sector: 'Energy',    pdf: 'reliance_brsr.pdf' },
+  { id: 'tstat',name: 'Tata Steel Ltd',          ticker: 'TATASTEEL.NS',  sector: 'Materials', pdf: 'brsr-tatasteel.pdf' },
+  { id: 'wipro',name: 'Wipro Ltd',               ticker: 'WIPRO.NS',      sector: 'IT',        pdf: 'business-responsibility-report-wipro.pdf' },
+  { id: 'hul',  name: 'Hindustan Unilever Ltd',  ticker: 'HINDUNILVR.NS', sector: 'FMCG',      pdf: 'HUL_BRSR.pdf' },
+  { id: 'adani',name: 'Adani Ports & SEZ Ltd',   ticker: 'ADANIPORTS.NS', sector: 'Logistics', pdf: 'adaniport_brsr.pdf' },
+];
+
+// GET /api/companies — returns available companies for the sidebar
+app.get('/api/companies', (req, res) => {
+  res.json(COMPANIES.map(c => ({
+    id: c.id,
+    name: c.name,
+    ticker: c.ticker,
+    sector: c.sector
+  })));
+});
+
+// GET /api/valuation/:ticker — runs the Python fusion layer
+app.get('/api/valuation/:ticker', (req, res) => {
+  const ticker = req.params.ticker;
+  const years  = req.query.years || 5;
+  
+  // Find the company to get its PDF path
+  const company = COMPANIES.find(c => c.ticker === ticker);
+const pdfPath = company ? path.join(__dirname, '../nlp', company.pdf) : '';
+const pythonScript = path.join(__dirname, '../scripts/fusion_layer.py');
+
+const pythonExecutable = process.platform === 'win32'
+  ? path.join(__dirname, '../valuation_env/Scripts/python.exe')
+  : path.join(__dirname, '../valuation_env/bin/python');
+
+
+  const pythonCmd = fs.existsSync(pythonExecutable) ? pythonExecutable : 'python';
+
+  console.log(`Starting valuation for ${ticker} (${years} yrs) using ${pythonCmd}...`);
+  const child = spawn(pythonCmd, [pythonScript, ticker, pdfPath, years]);
+
+  let data = '';
+  let errorData = '';
+
+  child.stdout.on('data', (chunk) => {
+    data += chunk.toString();
+  });
+
+  child.stderr.on('data', (chunk) => {
+    errorData += chunk.toString();
+  });
+
+  child.on('close', (code) => {
+    if (code !== 0) {
+      console.error(`Python script error (${code}): ${errorData}`);
+      return res.status(500).json({ error: 'Failed to calculate valuation.' });
+    }
+
+    try {
+      // Find the JSON object starting with {"ticker": and ending at the end of the output
+      const jsonStart = data.lastIndexOf('{"ticker":');
+      if (jsonStart === -1) throw new Error('No JSON output found');
+      
+      const jsonStr = data.substring(jsonStart).trim();
+      const result = JSON.parse(jsonStr);
+      res.json(result);
+    } catch (e) {
+      console.error('Failed to parse Python output:', data);
+      res.status(500).json({ error: 'Invalid response from valuation engine.' });
+    }
+  });
 });
 
 // ── START ─────────────────────────────────────────────────────
