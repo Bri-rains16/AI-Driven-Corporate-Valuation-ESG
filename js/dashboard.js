@@ -51,21 +51,20 @@ function filterCos(query) {
   buildList(filtered);
 }
 
-// ── LOAD COMPANY ──────────────────────────────────────────────
-// Called when a company is clicked in the sidebar.
-// Updates STATE.co, highlights sidebar item, shows detail view.
+//LOAD COMPANY on click
 async function loadCo(ticker) {
+  if (document.getElementById('view').classList.contains('loading')) {
+    toast('⚠ Please wait for current valuation to finish');
+    return;
+  }
   const companyMeta = COS.find(c => c.ticker === ticker);
   if (!companyMeta) return;
 
   STATE.selectedTicker = ticker;
   STATE.co = null; // Clear old data
-
-  // Highlight selected item in sidebar
   document.querySelectorAll('.co-item').forEach(el => el.classList.remove('active'));
   document.getElementById(`ci-${companyMeta.id}`)?.classList.add('active');
 
-  // Show detail panel and basic info
   document.getElementById('empty').style.display = 'none';
   document.getElementById('view').style.display = 'block';
 
@@ -77,19 +76,21 @@ async function loadCo(ticker) {
 
   // Reset metrics to show they are pending
   document.querySelectorAll('.m-val, .dc-val, .ring-val').forEach(el => el.textContent = '---');
-  document.getElementById('ring-arc').style.strokeDashoffset = 264;
+  document.getElementById('ring-arc').style.strokeDashoffset = 226;
+  document.getElementById('gw-arc').style.strokeDashoffset = 226;
+  document.getElementById('raw-arc').style.strokeDashoffset = 226;
+  document.getElementById('gw-rating').textContent = '';
+  document.getElementById('raw-rating').textContent = '';
 
   toast(`Selected ${ticker}. Click GO to start ${STATE.yrs}-year prediction.`);
 }
 
-/**
- * The actual prediction engine runner.
- */
+//Run valuation
 async function runValuation(ticker) {
   const companyMeta = COS.find(c => c.ticker === ticker);
   if (!companyMeta) return;
 
-  // Show loading state
+  //Show loading
   document.getElementById('view').classList.add('loading');
   toast(`Calculating AI Valuation for ${ticker} (${STATE.yrs} yrs)...`);
 
@@ -112,64 +113,73 @@ async function runValuation(ticker) {
   }
 }
 
-// ── RENDER ALL COMPANY DATA ───────────────────────────────────
-// Populates every field in the detail view then renders charts.
+//RENDER ALL predicted COMPANY DATA ───────────────────────────────────
 function renderAll() {
   const c = STATE.co;
   if (!c) return;
   console.log('Rendering company data:', c);
 
-  // Breadcrumb
   document.getElementById('bc').textContent = c.ticker;
 
-  // Company header
   document.getElementById('v-sector').textContent = c.sector.toUpperCase();
   document.getElementById('v-name').textContent = c.name;
   document.getElementById('v-sub').textContent = `${c.ticker} · ${c.brsr}`;
 
-  // ESG ring
+  //1. Raw ESG ring
+  const rawArc = document.getElementById('raw-arc');
+  const rScore = Math.round(c.esg.r);
+  rawArc.style.strokeDashoffset = 226 - (226 * rScore) / 100;
+  const rColor = rScore >= 75 ? 'var(--green)' : rScore >= 50 ? 'var(--amber)' : 'var(--red)';
+  rawArc.style.stroke = rColor;
+  document.getElementById('raw-v').style.color = rColor;
+  document.getElementById('raw-v').textContent = rScore;
+  document.getElementById('raw-rating').textContent = rScore >= 75 ? 'STRONG' : rScore >= 50 ? 'MODERATE' : 'WEAK';
+  document.getElementById('raw-rating').style.color = rColor;
+
+  //2. Greenwashing Penalty ring
+  const gwArc = document.getElementById('gw-arc');
+  const penalty = Math.round(c.esg.p);
+  gwArc.style.strokeDashoffset = 226 - (226 * penalty) / 100;
+  const gwColor = penalty <= 10 ? 'var(--green)' : penalty <= 25 ? 'var(--amber)' : 'var(--red)';
+  gwArc.style.stroke = gwColor;
+  document.getElementById('gw-v').style.color = gwColor;
+  document.getElementById('gw-v').textContent = penalty;
+  document.getElementById('gw-rating').textContent = penalty <= 10 ? 'CREDIBLE' : penalty <= 25 ? 'SUSPECT' : 'HIGH RISK';
+  document.getElementById('gw-rating').style.color = gwColor;
+
+  //3. Final Adjusted ESG ring
   const arc = document.getElementById('ring-arc');
   const score = Math.round(c.esg.t);
-  const offset = 226 - (226 * score) / 100;
-  arc.style.strokeDashoffset = offset;
-  
-  // Set color based on score
+  arc.style.strokeDashoffset = 226 - (226 * score) / 100;
   const color = score >= 70 ? 'var(--green)' : score >= 50 ? 'var(--amber)' : 'var(--red)';
   arc.style.stroke = color;
   document.getElementById('ring-v').style.color = color;
-  
   document.getElementById('ring-v').textContent = score;
   document.getElementById('v-rating').textContent = score >= 70 ? 'STRONG ESG' : score >= 50 ? 'MODERATE' : 'WEAK ESG';
   document.getElementById('v-rating').style.color = color;
 
 
-  // Metric cards
+  //Metric cards
   document.getElementById('m-iv').textContent = '₹ ' + c.dcf.iv.toLocaleString('en-IN');
-  const up = c.dcf.up;
-  document.getElementById('m-up').innerHTML = `
-    <span class="${up >= 0 ? 'up' : 'dn'}">
-      ${up >= 0 ? '▲' : '▼'} ${Math.abs(up)}% vs CMP ₹${c.dcf.cmp.toLocaleString('en-IN')}
-    </span>`;
+
   document.getElementById('m-wacc').textContent = c.dcf.wacc + '%';
   document.getElementById('m-tg').textContent = c.dcf.tg + '%';
   document.getElementById('m-p50').textContent = '₹ ' + c.mc.p50.toLocaleString('en-IN');
 
-  // DCF summary cards
+  //DCF summary cards
   document.getElementById('dc-iv').textContent = '₹ ' + c.dcf.iv.toLocaleString('en-IN');
   document.getElementById('dc-p5').textContent = '₹ ' + c.mc.p5.toLocaleString('en-IN');
   document.getElementById('dc-p95').textContent = '₹ ' + c.mc.p95.toLocaleString('en-IN');
 
-  // Forecast label in chart header
+  //Forecast label in chart header
   document.getElementById('fc-lbl').textContent = STATE.yrs;
   document.getElementById('fc-n').value = STATE.yrs;
 
-  // Render the three Chart.js charts
+  //Render charts.js
   renderCharts();
 }
 
-// ── FORECAST YEAR INPUT ───────────────────────────────────────
-// Called by the GO button in the topbar.
-// Clamps value to 1–30, updates STATE.yrs, re-renders charts.
+//FORECAST YEAR INPUT
 async function goFC() {
   const input = document.getElementById('fc-n');
   const v = parseInt(input.value);
@@ -184,8 +194,8 @@ async function goFC() {
   }
 }
 
-// ── INITIALIZATION ───────────────────────────────────────────
-// Called by auth.js when the dashboard is shown.
+//INITIALIZATION
+//Called by auth.js when the dashboard is shown.
 async function initDashboard() {
   const companies = await fetchCompanies();
   buildList(companies);

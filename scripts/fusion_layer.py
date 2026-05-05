@@ -1,39 +1,9 @@
-"""
-=============================================================================
-FUSION LAYER — AI-Driven Corporate Valuation Model
-=============================================================================
-
-PURPOSE:
-  This is the master controller that ties together all ML models.
-  It takes outputs from:
-    1. finance model/prediction.py  → Predicted FCF drivers (RF model)
-    2. nlp/esg_nlp.py               → ESG Score + Adjusted WACC (NLP pipeline)
-  And combines them to produce:
-    - Free Cash Flow (FCF) using the financial formulas
-    - DCF Intrinsic Value
-    - Monte Carlo simulation (8,000 paths) for risk-adjusted valuation
-
-USAGE:
-  python fusion_layer.py <TICKER> [PDF_PATH] [FORECAST_YEARS]
-
-  Examples:
-    python fusion_layer.py INFY.NS
-    python fusion_layer.py INFY.NS "../nlp/infosys-ar-24.pdf" 5
-
-  If PDF_PATH is not provided, a neutral ESG score (50.0) and
-  base WACC (10.0%) are used as fallback.
-
-  Output is a single JSON line — read by the Express backend.
-=============================================================================
-"""
-
 import sys
 import os
 import json
 import numpy as np
 
 _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-  # Valution/
 _FIN    = os.path.join(_ROOT, "finance model")
 _NLP    = os.path.join(_ROOT, "nlp")
 
@@ -44,38 +14,45 @@ from prediction import get_financial_predictions
 from esg_nlp    import get_esg_score
 
 #Constants
-TAX_RATE        = 0.25   # India corporate tax rate
-MC_SIMULATIONS  = 8000   # Monte Carlo paths
-
-# Formulas
+TAX_RATE        = 0.25 
+MC_SIMULATIONS  = 8000
 
 def calculate_fcf(revenue, ebitda_margin, tax_rate, depreciation_pct, capex_pct, wc_pct):
-    """
-    FCF = EBIT × (1 − Tax Rate) + Depreciation − CapEx − ΔNWC
-    All inputs expressed as absolute values (not percentages).
-    """
-    ebit        = revenue * ebitda_margin
+    ebit         = revenue * ebitda_margin
+    nopat        = ebit * (1 - tax_rate)
     depreciation = revenue * depreciation_pct
     capex        = revenue * capex_pct
     delta_nwc    = revenue * wc_pct
-    return ebit * (1 - tax_rate) + depreciation - capex - delta_nwc
+    return nopat + depreciation - capex - delta_nwc
+
+def get_absolute_projections(fin, tax_rate, forecast_years):
+    """
+    Converts ML growth rates/margins into a list of absolute ₹ values per year.
+    """
+    projections = []
+    curr_rev = fin["base_revenue"]
+    
+    for f in fin["full_forecast"][:forecast_years]:
+        curr_rev *= (1 + f["revenue_growth"])
+        revenue = curr_rev
+        ebitda  = revenue * f["ebitda_margin"]
+        fcf     = calculate_fcf(
+            revenue, f["ebitda_margin"], tax_rate, 
+            f["depreciation_pct"], f["capex_pct"], f["wc_pct"]
+        )
+        projections.append({
+            "year": f.get("year", 0),
+            "revenue": round(revenue, 2),
+            "ebitda":  round(ebitda, 2),
+            "fcf":     round(fcf, 2)
+        })
+    return projections
 
 
 def run_monte_carlo(base_fcf, adjusted_wacc, terminal_growth_rate, num_years):
-    """
-    Monte Carlo Step: 8,000 simulations perturbing DCF variables.
 
-    The adjusted_wacc comes directly from the ESG NLP pipeline output:
-      → Higher ESG score = lower WACC = higher valuation
-      → Lower ESG score  = higher WACC = lower valuation
-
-    Perturbations (normal distribution):
-      WACC           ± 1.0 % std dev
-      Growth rate    ± 0.5 % std dev
-      FCF            ± 5.0 % std dev
-    """
     wacc_paths   = np.random.normal(adjusted_wacc,            0.010,             MC_SIMULATIONS)
-    growth_paths = np.random.normal(terminal_growth_rate,     0.005,             MC_SIMULATIONS)
+    growth_paths = np.random.normal(terminal_growth_rate,     0.05,             MC_SIMULATIONS)
     fcf_paths    = np.random.normal(base_fcf,                 abs(base_fcf * 0.05), MC_SIMULATIONS)
 
     valuations = []
@@ -107,28 +84,22 @@ def run_monte_carlo(base_fcf, adjusted_wacc, terminal_growth_rate, num_years):
     }
 
 
-def calculate_dcf(base_fcf, wacc, terminal_growth, num_years):
+def calculate_dcf(fcf_array, wacc, terminal_growth, num_years):
     """
-    Deterministic DCF — a single intrinsic value (no randomness).
-    Used to show a clean Before vs After ESG comparison.
+    Sum of PV of explicit FCFs + PV of terminal value.
     """
     pv = 0.0
-    current_fcf = base_fcf
-    for t in range(1, num_years + 1):
-        current_fcf *= (1 + terminal_growth)
-        pv          += current_fcf / ((1 + wacc) ** t)
-    # Guard: wacc must be > terminal_growth
+    for t, fcf in enumerate(fcf_array):
+        pv += fcf / ((1 + wacc) ** (t + 1))
+    
+    # Terminal Value based on the last year's absolute FCF
+    last_fcf = fcf_array[-1]
     if wacc <= terminal_growth:
         wacc = terminal_growth + 0.01
-    terminal_value = (current_fcf * (1 + terminal_growth)) / (wacc - terminal_growth)
-    pv            += terminal_value / ((1 + wacc) ** num_years)
+        
+    terminal_value = (last_fcf * (1 + terminal_growth)) / (wacc - terminal_growth)
+    pv += terminal_value / ((1 + wacc) ** num_years)
     return round(pv, 2)
-
-
-# ── Company Registry ──────────────────────────────────────────────────────────
-# Maps company name → ticker + BRSR PDF path (relative to project root).
-# To add a new company: add an entry here and drop the PDF into nlp/ folder.
-# ──────────────────────────────────────────────────────────────────────────────
 
 NLP_DIR = os.path.join(_ROOT, "nlp")
 
@@ -141,14 +112,8 @@ COMPANIES = [
     {"name": "Adani Ports & SEZ Ltd",    "ticker": "ADANIPORTS.NS", "pdf": os.path.join(NLP_DIR, "adaniport_brsr.pdf")},
 ]
 
-
-# ── Core Valuation Engine ─────────────────────────────────────────────────────
-
 def run_valuation(ticker, pdf_path, forecast_years):
-    """
-    Runs the full pipeline and returns the output dict.
-    Used by both interactive mode and CLI/Express mode.
-    """
+
     # STEP 1: Financial ML predictions
     fin = get_financial_predictions(ticker, forecast_years)
     if fin is None:
@@ -169,28 +134,22 @@ def run_valuation(ticker, pdf_path, forecast_years):
         gw_penalty    = 0.0
         esg_source    = "fallback (no PDF)"
 
-    # STEP 3: FCF Calculation
-    base_revenue = fin["base_revenue"]
-    fcf = calculate_fcf(
-        revenue          = base_revenue,
-        ebitda_margin    = fin["ebitda_margin"],
-        tax_rate         = TAX_RATE,
-        depreciation_pct = fin["depreciation_pct"],
-        capex_pct        = fin["capex_pct"],
-        wc_pct           = fin["wc_pct"],
-    )
+    # STEP 3: Convert ML percentages into Absolute ₹ Projections
+    abs_projections = get_absolute_projections(fin, TAX_RATE, forecast_years)
+    fcf_forecast    = [p["fcf"] for p in abs_projections]
+    base_fcf        = fcf_forecast[0]
 
     # STEP 4: Terminal growth rate
     BASE_WACC       = 0.10
     terminal_growth = max(fin["revenue_growth"] * 0.5, 0.02)
 
     # STEP 5: Before-ESG valuation
-    dcf_before = calculate_dcf(fcf, BASE_WACC, terminal_growth, forecast_years)
-    mc_before  = run_monte_carlo(fcf, BASE_WACC, terminal_growth, forecast_years)
+    dcf_before = calculate_dcf(fcf_forecast, BASE_WACC, terminal_growth, forecast_years)
+    mc_before  = run_monte_carlo(base_fcf, BASE_WACC, terminal_growth, forecast_years)
 
     # STEP 6: After-ESG valuation
-    dcf_after = calculate_dcf(fcf, adjusted_wacc, terminal_growth, forecast_years)
-    mc_after  = run_monte_carlo(fcf, adjusted_wacc, terminal_growth, forecast_years)
+    dcf_after = calculate_dcf(fcf_forecast, adjusted_wacc, terminal_growth, forecast_years)
+    mc_after  = run_monte_carlo(base_fcf, adjusted_wacc, terminal_growth, forecast_years)
 
     # STEP 7: ESG impact summary
     wacc_delta_pct = round((adjusted_wacc - BASE_WACC) * 100, 4)
@@ -202,17 +161,16 @@ def run_valuation(ticker, pdf_path, forecast_years):
         "forecast_years": forecast_years,
         "esg": {
             "score":             esg_score,
+            "raw_score":         esg_result.get("raw_score", esg_score),
             "rating":            esg_rating,
             "greenwash_penalty": gw_penalty,
             "source":            esg_source,
         },
         "financial": {
-            "base_revenue":        round(base_revenue, 2),
-            "revenue_growth_pct":  round(fin["revenue_growth"] * 100, 2),
-            "ebitda_margin_pct":   round(fin["ebitda_margin"] * 100, 2),
-            "base_fcf":            round(fcf, 2),
+            "base_revenue":        fin["base_revenue"],
             "terminal_growth_pct": round(terminal_growth * 100, 2),
-            "full_forecast":       fin["full_forecast"]
+            "full_forecast":       fin["full_forecast"],
+            "absolute_projections": abs_projections
         },
         "before_esg": {
             "wacc_pct":      round(BASE_WACC * 100, 4),
@@ -256,7 +214,7 @@ def fmt(val):
 
 def pretty_print(result):
     if "error" in result:
-        print(f"\n  ❌ {result['error']}\n")
+        print(f"\n   {result['error']}\n")
         return
 
     e = result["esg"]
@@ -314,7 +272,7 @@ def pretty_print(result):
     print(f"{'='*70}\n")
 
 
-# ── Interactive Mode ──────────────────────────────────────────────────────────
+# ── Interactive Mode 
 
 def interactive_mode():
     print("\n" + "=" * 62)
@@ -322,18 +280,16 @@ def interactive_mode():
     print("  JIIT Minor Project 2 | Even Sem 2026")
     print("=" * 62)
 
-    # Show available companies
     print(f"\n  Companies with BRSR reports available ({len(COMPANIES)}):\n")
     for i, c in enumerate(COMPANIES, 1):
         pdf_status = "✅" if os.path.exists(c["pdf"]) else "❌ PDF missing"
         print(f"    {i}. {c['name']:<30}  ({c['ticker']})  {pdf_status}")
 
-    # Auto-select if only one company
     if len(COMPANIES) == 1:
         selected = COMPANIES[0]
         print(f"\n  → Auto-selected: {selected['name']} (only 1 company available)")
     else:
-        # Get user selection
+        #user selection
         print()
         while True:
             try:
@@ -364,9 +320,6 @@ def interactive_mode():
 
     result = run_valuation(selected["ticker"], selected["pdf"], years)
     pretty_print(result)
-
-
-# ── Main Entry Point ──────────────────────────────────────────────────────────
 
 def main():
     if len(sys.argv) >= 2:

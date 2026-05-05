@@ -134,7 +134,9 @@ function renderCharts() {
             ...TX,
             callback: v => v >= 100000
               ? `₹${(v / 100000).toFixed(1)}L`
-              : `₹${(v / 1000).toFixed(0)}K`,
+              : v >= 1000 
+                ? `₹${(v / 1000).toFixed(1)}K`
+                : `₹${v}`,
           },
           grid: GR,
         },
@@ -191,16 +193,16 @@ function renderCharts() {
     },
   });
 
-  // ── CHART 3: FCF Yield % over time ────────────────────────
-  const fcfYield = revData.map((r, i) => +(fcfData[i] / r * 100).toFixed(2));
+  //CHART 3: Absolute FCF Growth
+  const fcfAbs = fcfData;
 
   ch3 = new Chart(document.getElementById('cFCF'), {
     type: 'line',
     data: {
       labels: L,
       datasets: [{
-        label: 'FCF Yield %',
-        data:  fcfYield,
+        label: 'FCF (₹ Cr)',
+        data:  fcfAbs,
         borderColor:     '#00c896',
         backgroundColor: 'rgba(0,200,150,.08)',
         tension: .4, pointRadius: 3, fill: true, borderWidth: 1.8,
@@ -212,12 +214,22 @@ function renderCharts() {
         legend: { display: false },
         tooltip: {
           ...TT,
-          callbacks: { label: ctx => ` FCF Yield: ${ctx.raw}%` },
+          callbacks: { label: ctx => ` FCF: ₹${ctx.raw.toLocaleString('en-IN')} Cr` },
         },
       },
       scales: {
         x: { ticks: TX, grid: GR },
-        y: { ticks: { ...TX, callback: v => v.toFixed(1) + '%' }, grid: GR },
+        y: { 
+          ticks: { 
+            ...TX, 
+            callback: v => v >= 100000 
+              ? `₹${(v / 100000).toFixed(1)}L` 
+              : v >= 1000 
+                ? `₹${(v / 1000).toFixed(1)}K` 
+                : `₹${v}`
+          }, 
+          grid: GR 
+        },
       },
     },
   });

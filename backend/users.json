@@ -12,5 +12,12 @@
     "password": "kapil@123",
     "registeredAt": 1777795121641,
     "remindAt": 1809331121641
+  },
+  {
+    "name": "Kapil",
+    "email": "kapilsharma95096909@gmail.com",
+    "password": "kapil@123",
+    "registeredAt": 1778004298940,
+    "remindAt": 1809540298940
   }
 ]

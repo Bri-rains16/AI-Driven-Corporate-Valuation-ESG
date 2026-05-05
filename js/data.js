@@ -73,7 +73,9 @@ async function fetchValuation(ticker, years) {
       brsr:   `FY ${new Date().getFullYear() - 1}-${new Date().getFullYear() % 100}`,
       gw:     data.esg.greenwash_penalty > 10 ? 'High' : data.esg.greenwash_penalty > 0 ? 'Medium' : 'None',
       esg: {
+        r: Math.round(data.esg.raw_score || 0),
         t: Math.round(data.esg.score),
+        p: Math.round(data.esg.greenwash_penalty || 0),
       },
       dcf: {
         iv:  Math.round(data.after_esg.dcf_intrinsic),
@@ -89,20 +91,15 @@ async function fetchValuation(ticker, years) {
       },
     };
 
-    // Extract arrays for charts (Cumulative growth + unit conversion to Crores)
-    let currRev = data.financial.base_revenue;
+    // Extract absolute arrays for charts (unit conversion to Crores)
     const rev = [];
     const ebitda = [];
     const fcf = [];
 
-    data.financial.full_forecast.forEach(f => {
-      currRev *= (1 + f.revenue_growth);
-      const rCr = Math.round(currRev / 1e7);
-      rev.push(rCr);
-      ebitda.push(Math.round(rCr * f.ebitda_margin));
-      
-      const fCr = Math.round(rCr * (f.ebitda_margin * (1 - 0.25) + f.depreciation_pct - f.capex_pct - f.wc_pct));
-      fcf.push(fCr);
+    (data.financial.absolute_projections || []).forEach(p => {
+      rev.push(Math.round(p.revenue / 1e7));
+      ebitda.push(Math.round(p.ebitda / 1e7));
+      fcf.push(Math.round(p.fcf / 1e7));
     });
 
     return { ...mapped, rev, ebitda, fcf };

@@ -5,27 +5,19 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ValuESG — AI Corporate Valuation</title>
-
-  <!-- Fonts -->
+  <!--Fonts-->
   <link
     href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600&family=JetBrains+Mono:wght@300;400;500&display=swap"
     rel="stylesheet">
-
-  <!-- All styles in one place -->
   <link rel="stylesheet" href="css/style.css">
-
-
 </head>
 
 <body>
 
-  <!-- ─── TOAST NOTIFICATION ──────────────────────────────────────── -->
+  <!--NOTIFICATION-->
   <div class="toast" id="toast"></div>
 
-  <!-- ═══════════════════════════════════════════════════════════════
-     PAGE 1 — LANDING
-     Shown to everyone. No auth required.
-════════════════════════════════════════════════════════════════ -->
+  <!--PAGE 1—LANDING-->
   <div class="page active" id="page-landing">
     <nav>
       <div class="logo">VALU<em>/</em>ESG</div>
@@ -59,9 +51,9 @@
             <div class="stat-lbl">Monte Carlo paths</div>
           </div>
           <div>
-          <div class="stat-val">SEBI</div>
-          <div class="stat-lbl">BRSR compliant</div>
-        </div>
+            <div class="stat-val">SEBI</div>
+            <div class="stat-lbl">BRSR compliant</div>
+          </div>
         </div>
       </div>
     </section>
@@ -80,14 +72,14 @@
         <div class="feat-card up d1">
           <div class="feat-n">01</div>
           <div class="feat-title">ML Forecasting</div>
-          <div class="feat-desc">Revenue and margin projected via RandomForest using autoregressive chaining over a
+          <div class="feat-desc">Revenue and margin projected via RandomForest using chaining over a
             custom horizon.</div>
-          <div class="feat-pills"><span class="pill">RandomForest</span><span class="pill">5 Drivers</span></div>
+          <div class="feat-pills"><span class="pill">RandomForest</span></div>
         </div>
         <div class="feat-card up d2">
           <div class="feat-n">02</div>
-          <div class="feat-title">Three-Statement Model</div>
-          <div class="feat-desc">Projected IS, balance sheet deltas, and FCF: NOPAT + Dep − CapEx − ΔNWC.</div>
+          <div class="feat-title">Financial Parameters</div>
+          <div class="feat-desc">EBITDA, Revenue margin, CapEx, Working Capital</div>
           <div class="feat-pills"><span class="pill">FCF</span><span class="pill">NOPAT</span><span
               class="pill">ΔWC</span></div>
         </div>
@@ -122,10 +114,7 @@
     </section>
   </div>
 
-  <!-- ═══════════════════════════════════════════════════════════════
-     PAGE 2 — AUTH (Login / Register)
-     Shown only to unauthenticated users.
-════════════════════════════════════════════════════════════════ -->
+  <!--PAGE 2 — AUTH (Login / Register) Shown only to unauthenticated users.-->
   <div class="page auth-wrap" id="page-auth">
     <nav>
       <div class="logo" style="cursor:pointer" onclick="showLanding()">VALU<em>/</em>ESG</div>
@@ -136,13 +125,11 @@
       <div class="auth-box">
         <div class="auth-logo">VALU/ESG</div>
         <div class="auth-tag">> AI CORPORATE VALUATION PLATFORM</div>
-        <!-- Tab switcher -->
         <div class="tabs">
           <button class="tab on" id="tab-in" onclick="switchTab('in')">SIGN IN</button>
           <button class="tab" id="tab-up" onclick="switchTab('up')">REGISTER</button>
         </div>
 
-        <!-- Sign In form -->
         <div id="f-in">
           <label>Email</label>
           <input type="email" id="li-email" placeholder="you@example.com" onkeydown="if(event.key==='Enter') doLogin()">
@@ -237,8 +224,35 @@
             <div class="badge-row" id="v-badges"></div>
           </div>
 
-          <!-- ESG ring ONLY -->
+          <!-- ESG Step-by-Step Rings -->
           <div class="esg-row">
+            <!-- 1. Raw ESG Score -->
+            <div class="ring-box">
+              <svg width="82" height="82" viewBox="0 0 90 90">
+                <circle cx="45" cy="45" r="36" fill="none" stroke="rgba(0,0,0,.06)" stroke-width="7" />
+                <circle cx="45" cy="45" r="36" fill="none" stroke="#3482d8" stroke-width="7" stroke-dasharray="226"
+                  stroke-dashoffset="226" stroke-linecap="round" transform="rotate(-90 45 45)" id="raw-arc"
+                  style="transition:stroke-dashoffset 1.1s ease" />
+              </svg>
+              <div class="ring-val" id="raw-v">—</div>
+              <div class="ring-lbl">RAW ESG</div>
+              <div id="raw-rating" class="ring-rating"></div>
+            </div>
+
+            <!-- 2. Greenwashing Penalty -->
+            <div class="ring-box">
+              <svg width="82" height="82" viewBox="0 0 90 90">
+                <circle cx="45" cy="45" r="36" fill="none" stroke="rgba(0,0,0,.06)" stroke-width="7" />
+                <circle cx="45" cy="45" r="36" fill="none" stroke="#d08a00" stroke-width="7" stroke-dasharray="226"
+                  stroke-dashoffset="226" stroke-linecap="round" transform="rotate(-90 45 45)" id="gw-arc"
+                  style="transition:stroke-dashoffset 1.1s ease" />
+              </svg>
+              <div class="ring-val" id="gw-v">—</div>
+              <div class="ring-lbl">GREENWASHING PENALTY</div>
+              <div id="gw-rating" class="ring-rating"></div>
+            </div>
+
+            <!-- 3. Final Adjusted Score -->
             <div class="ring-box">
               <svg width="82" height="82" viewBox="0 0 90 90">
                 <circle cx="45" cy="45" r="36" fill="none" stroke="rgba(0,0,0,.06)" stroke-width="7" />
@@ -247,10 +261,9 @@
                   style="transition:stroke-dashoffset 1.1s ease" />
               </svg>
               <div class="ring-val" id="ring-v">—</div>
-              <div class="ring-lbl">ESG</div>
+              <div class="ring-lbl">FINAL ESG</div>
               <div id="v-rating" class="ring-rating"></div>
             </div>
-            <!-- Pillars removed to avoid assumed data -->
           </div>
 
           <!-- Key financial metrics -->
@@ -258,7 +271,7 @@
             <div class="metric">
               <div class="m-lbl">DCF Intrinsic Value</div>
               <div class="m-val" id="m-iv">—</div>
-              <div class="m-note" id="m-up">—</div>
+
             </div>
             <div class="metric">
               <div class="m-lbl">WACC</div>
@@ -281,7 +294,7 @@
           <div class="charts">
             <div class="chart-box wide">
               <div class="ct-title">REVENUE · EBITDA · FCF — <span id="fc-lbl">5</span>-YEAR FORECAST</div>
-              <div class="ct-sub">ML-projected via GradientBoosting (₹ Crores)</div>
+              <div class="ct-sub">ML-projected Data (₹ Crores) </div>
               <div style="height:220px"><canvas id="cForecast"></canvas></div>
             </div>
             <div class="chart-box">
@@ -290,8 +303,8 @@
               <div style="height:190px"><canvas id="cMC"></canvas></div>
             </div>
             <div class="chart-box">
-              <div class="ct-title">FCF YIELD PROGRESSION</div>
-              <div class="ct-sub">Free cash flow as % of revenue</div>
+              <div class="ct-title">FREE CASH FLOW GROWTH</div>
+              <div class="ct-sub">Absolute FCF projections (₹ Crores)</div>
               <div style="height:190px"><canvas id="cFCF"></canvas></div>
             </div>
           </div>
@@ -322,12 +335,12 @@
             <div class="pc">
               <div class="pc-num">01 — ACTIVE</div>
               <div class="pc-title">ML Forecasting</div>
-              <div class="pc-desc">GradientBoosting on 10yr financials + ESG deltas. R² 0.97, MAE 3.1%.</div>
+              <div class="pc-desc">4 Years of financial data, Latest ESG data</div>
             </div>
             <div class="pc">
               <div class="pc-num">02 — ACTIVE</div>
-              <div class="pc-title">Three-Statement</div>
-              <div class="pc-desc">FCF = NOPAT + Dep − CapEx − ΔNWC. IS → BS → CF.</div>
+              <div class="pc-title">Financial Parameters</div>
+              <div class="pc-desc">Revenue, Growth rates, Margin forecasts, CapEx</div>
             </div>
             <div class="pc">
               <div class="pc-num">03 — ACTIVE</div>
@@ -347,7 +360,7 @@
             <div class="pc">
               <div class="pc-num">06 — AUTO</div>
               <div class="pc-title">BRSR Reports</div>
-              <div class="pc-desc">Pre-loaded FY24 SEBI-mandated filings. Auto-ingested annually.</div>
+              <div class="pc-desc">Pre-loaded FY25 SEBI-mandated filings. Auto-ingested annually.</div>
             </div>
           </div>
 

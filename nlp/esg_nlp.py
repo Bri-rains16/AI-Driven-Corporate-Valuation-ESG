@@ -1,31 +1,3 @@
-"""
-=============================================================================
-ESG NLP PIPELINE — HYBRID APPROACH + ML GREENWASHING DETECTION
-Project: AI-Driven Corporate Valuation Model Integrating ESG Factors
-JIIT Noida | Even Sem 2026
-=============================================================================
-
-HOW TO RUN:
-  python esg_nlp.py                      <- runs on built-in sample
-  python esg_nlp.py your_report.pdf      <- runs on your BRSR PDF
-
-REQUIRED FILES (all in same folder as this script):
-  train_data.csv        <- ESG sentence classification training data
-  test_data.csv         <- ESG sentence classification test data
-  greenwash_train.csv   <- Greenwashing detection training data
-  greenwash_test.csv    <- Greenwashing detection test data
-
-INSTALL:
-  pip install scikit-learn pandas numpy
-  pip install pdfplumber    <- only if using a PDF
-
-TO ADD MORE GREENWASHING TRAINING DATA:
-  Open greenwash_train.csv and add rows with two columns:
-    Sentence  |  Label
-  Label must be exactly: Greenwash or Credible
-=============================================================================
-"""
-
 import re
 import sys
 import os
@@ -120,11 +92,7 @@ def show_extracted_metrics(metrics: dict, company: str):
         print(f"  {name.replace('_',' ').title():<35}: {', '.join(values)}")
     print(f"{'='*62}")
 
-
-# =============================================================================
 # CSV LOADER  (shared by both models)
-# =============================================================================
-
 def load_csv(filepath: str) -> tuple:
     if not os.path.exists(filepath):
         print(f"\n  ERROR: File not found — {filepath}")
@@ -138,11 +106,10 @@ def load_csv(filepath: str) -> tuple:
     return df["Sentence"].tolist(), df["Label"].tolist()
 
 
-# =============================================================================
+
 # STEP 2 — ESG CLASSIFICATION MODEL
 # Trains on train_data.csv, tests on test_data.csv
 # Labels: Positive ESG / Negative ESG / Neutral
-# =============================================================================
 
 def train_esg_model(train_csv: str, test_csv: str):
     print(f"\n  Loading ESG training data : {train_csv}")
@@ -179,10 +146,7 @@ def train_esg_model(train_csv: str, test_csv: str):
     return model
 
 
-# =============================================================================
 # STEP 3 — CLASSIFY REPORT SENTENCES (ESG labels)
-# =============================================================================
-
 def classify_report(text: str, model) -> pd.DataFrame:
     sentences  = split_into_sentences(text)
     cleaned    = [clean_text(s) for s in sentences]
@@ -204,11 +168,7 @@ def show_classification_results(df: pd.DataFrame):
         print(f"  {icons[label]}  {label:<20}: {count} sentences")
     print(f"{'='*62}")
 
-
-# =============================================================================
 # STEP 4 — RAW ESG SCORE
-# =============================================================================
-
 def calculate_raw_esg_score(df: pd.DataFrame) -> dict:
     positive = len(df[df["Label"] == "Positive ESG"])
     negative = len(df[df["Label"] == "Negative ESG"])
@@ -217,30 +177,7 @@ def calculate_raw_esg_score(df: pd.DataFrame) -> dict:
     return {"positive": positive, "negative": negative, "neutral": neutral, "raw_esg_score": score}
 
 
-# =============================================================================
 # STEP 5 — GREENWASHING DETECTION MODEL
-#
-# Fully ML-based — no hardcoded keyword lists.
-# Learns from greenwash_train.csv what makes a sentence greenwashing
-# versus a credible ESG claim.
-#
-# GREENWASH patterns the model learns:
-#   - Future-tense words: "aim", "plan", "aspire", "will", "going to",
-#     "intend", "hope", "expect", "by 2050", "in the coming years"
-#   - Vague repeated phrases: "carbon neutral", "sustainability",
-#     "green", "committed to", "net zero" without supporting numbers
-#   - Superlative language: "most sustainable", "leader in"
-#
-# CREDIBLE patterns the model learns:
-#   - Specific numbers: percentages, quantities, years
-#   - Past tense: "reduced", "achieved", "installed", "recorded"
-#   - Third-party references: "verified", "audited", "certified"
-#   - Shortfall acknowledgements: "missed", "fell short", "below target"
-#
-# PENALTY SCORE:
-#   Penalty Score = (greenwash_sentences / total_sentences) x 100
-#   Range: 0 (no greenwashing) to 100 (every sentence is greenwashing)
-# =============================================================================
 
 def train_greenwash_model(train_csv: str, test_csv: str):
     """
@@ -348,27 +285,6 @@ def show_greenwash_results(gw: dict):
         print(f"\n  No greenwashing sentences detected.")
     print(f"{'='*62}")
 
-
-# =============================================================================
-# STEP 6 — FINAL ADJUSTED ESG SCORE + WACC
-#
-# FORMULA:
-#   Final ESG Score = Raw ESG Score - (Penalty Score x 0.3)
-#
-#   The 0.3 multiplier means even a penalty of 100 (every sentence is
-#   greenwash) can only reduce the ESG score by 30 points — keeping
-#   the penalty proportional and not catastrophic.
-#
-# WACC ADJUSTMENT RANGE: ±3%
-#   Score 100 -> -3.00% -> WACC = 7.00%   (strong ESG, low risk)
-#   Score  50 ->  0.00% -> WACC = 10.00%  (neutral)
-#   Score   0 -> +3.00% -> WACC = 13.00%  (weak ESG, high risk)
-#
-# HOW IT CONNECTS TO DCF:
-#   Higher ESG score -> lower WACC -> higher company valuation
-#   Lower ESG score  -> higher WACC -> lower company valuation
-# =============================================================================
-
 def calculate_final_score(raw: dict, gw: dict) -> dict:
     raw_score      = raw["raw_esg_score"]
     penalty        = gw["penalty_score"]
@@ -381,11 +297,11 @@ def calculate_final_score(raw: dict, gw: dict) -> dict:
     adjusted_wacc  = round(base_wacc + esg_adjustment, 6)
 
     if adjusted_score >= 75:
-        rating = "STRONG ESG ✅"
+        rating = "STRONG ESG "
     elif adjusted_score >= 50:
         rating = "MODERATE ESG ⚠️"
     else:
-        rating = "WEAK ESG ❌"
+        rating = "WEAK ESG"
 
     return {
         "raw_score"     : raw_score,
@@ -415,11 +331,6 @@ def show_final_score(result: dict):
     print(f"\n  -> Use {result['adjusted_wacc']*100:.4f}% as your discount rate in DCF.")
     print(f"{'='*62}\n")
 
-
-# =============================================================================
-# PDF READER
-# =============================================================================
-
 def read_pdf(pdf_path: str) -> str:
     try:
         import pdfplumber
@@ -436,13 +347,7 @@ def read_pdf(pdf_path: str) -> str:
         print(f"  Pages: {len(pdf.pages)} | Characters: {len(text)}")
     return text
 
-
-# =============================================================================
 # SAMPLE REPORT
-# Contains deliberate greenwashing signals so detection is visible:
-#   - "carbon neutral" repeated many times
-#   - Many vague future sentences: aim, plan, aspire, by 2045, etc.
-# =============================================================================
 
 SAMPLE_REPORT = """
 Tata Steel Limited is committed to sustainable development and responsible business practices.
@@ -474,13 +379,7 @@ The company hopes to reduce its carbon footprint significantly by the end of 204
 We expect to transition fully to renewable energy going forward.
 The company is working towards carbon neutral operations by 2035.
 """
-
-
-
-# =============================================================================
 # PUBLIC API — called by fusion_layer.py
-# =============================================================================
-
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 def get_esg_score(pdf_path: str) -> dict:
@@ -505,12 +404,7 @@ def get_esg_score(pdf_path: str) -> dict:
 
     final = calculate_final_score(raw, gw)
     return final
-
-
-# =============================================================================
 # MAIN
-# =============================================================================
-
 if __name__ == "__main__":
 
     print("\n" + "#"*62)
@@ -532,21 +426,21 @@ if __name__ == "__main__":
     print(f"\n>>> STEP 1: RULE-BASED METRIC EXTRACTION")
     show_extracted_metrics(extract_esg_metrics(report_text), company)
 
-    # STEP 2 — ESG classification model
+    # STEP 2-ESG classification model
     print(f"\n>>> STEP 2: TRAINING ESG CLASSIFICATION MODEL")
     esg_model = train_esg_model("train_data.csv", "test_data.csv")
 
-    # STEP 3 — classify report sentences
+    # STEP 3-classify report sentences
     print(f"\n>>> STEP 3: CLASSIFYING REPORT SENTENCES")
     results = classify_report(report_text, esg_model)
     show_classification_results(results)
 
-    # STEP 4 — raw ESG score
+    # STEP 4-raw ESG score
     print(f"\n>>> STEP 4: CALCULATING RAW ESG SCORE")
     raw = calculate_raw_esg_score(results)
     print(f"\n  Raw ESG Score (before greenwashing check) : {raw['raw_esg_score']} / 100")
 
-    # STEP 5 — greenwashing ML model
+    # STEP 5-greenwashing ML model
     print(f"\n>>> STEP 5: TRAINING GREENWASHING DETECTION MODEL")
     gw_model = train_greenwash_model("greenwash_train.csv", "greenwash_test.csv")
 
@@ -555,7 +449,7 @@ if __name__ == "__main__":
     gw        = run_greenwash_detection(sentences, gw_model)
     show_greenwash_results(gw)
 
-    # STEP 6 — final score
+    # STEP 6-final score
     print(f"\n>>> STEP 6: FINAL ADJUSTED ESG SCORE")
     final = calculate_final_score(raw, gw)
     show_final_score(final)
