@@ -38,11 +38,6 @@ from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
 from sklearn.metrics import classification_report, accuracy_score, f1_score
 from sklearn.pipeline import Pipeline
 
-
-# =============================================================================
-# STOPWORDS
-# =============================================================================
-
 STOPWORDS = {
     "i","me","my","we","our","you","your","he","him","his","she","her",
     "it","its","they","them","their","what","which","who","this","that",
@@ -56,10 +51,7 @@ STOPWORDS = {
     "financial","during","report","total","s","t","d","ll","m","re","ve",
 }
 
-
-# =============================================================================
 # HELPERS
-# =============================================================================
 
 def split_into_sentences(text: str) -> list:
     sentences = re.split(r'(?<=[.!?])\s+', text.strip())
@@ -95,10 +87,7 @@ def clean_text_greenwash(text: str) -> str:
     words = [w for w in words if w not in light_stopwords and len(w) > 1]
     return " ".join(words)
 
-
-# =============================================================================
 # STEP 1 — RULE-BASED METRIC EXTRACTION
-# =============================================================================
 
 ESG_PATTERNS = {
     "carbon_emissions_tCO2"    : r"(\d[\d,\.]*)\s*(million\s*)?(metric tons?|tCO2|tonnes?|MT)\s*(of\s*)?(CO2|carbon|GHG)?",

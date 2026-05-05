@@ -1,0 +1,7 @@
+{
+    "name": "name",
+    "email": "your email",
+    "password": "password",
+    "registeredAt": 1234567890,
+    "remindAt": 12344
+} 

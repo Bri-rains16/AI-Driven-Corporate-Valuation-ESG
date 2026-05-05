@@ -74,9 +74,6 @@ async function fetchValuation(ticker, years) {
       gw:     data.esg.greenwash_penalty > 10 ? 'High' : data.esg.greenwash_penalty > 0 ? 'Medium' : 'None',
       esg: {
         t: Math.round(data.esg.score),
-        e: Math.round(data.esg.score * 0.9), // Mock breakdown for UI
-        s: Math.round(data.esg.score * 0.95),
-        g: Math.round(data.esg.score * 0.85),
       },
       dcf: {
         iv:  Math.round(data.after_esg.dcf_intrinsic),

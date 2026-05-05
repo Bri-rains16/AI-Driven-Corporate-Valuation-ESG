@@ -32,7 +32,6 @@ import os
 import json
 import numpy as np
 
-# ── Path setup so we can import sibling packages ─────────────────────────────
 _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
   # Valution/
 _FIN    = os.path.join(_ROOT, "finance model")
@@ -77,7 +76,7 @@ def run_monte_carlo(base_fcf, adjusted_wacc, terminal_growth_rate, num_years):
     """
     wacc_paths   = np.random.normal(adjusted_wacc,            0.010,             MC_SIMULATIONS)
     growth_paths = np.random.normal(terminal_growth_rate,     0.005,             MC_SIMULATIONS)
-    fcf_paths    = np.random.normal(base_fcf,                 base_fcf * 0.05,   MC_SIMULATIONS)
+    fcf_paths    = np.random.normal(base_fcf,                 abs(base_fcf * 0.05), MC_SIMULATIONS)
 
     valuations = []
     for i in range(MC_SIMULATIONS):

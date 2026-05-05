@@ -384,12 +384,12 @@ input:focus { border-color: var(--green); }
 
 /* ── 10. ESG ROW ─────────────────────────────────────────── */
 .esg-row {
-  display: grid;
-  grid-template-columns: 100px 1fr 1fr 1fr;
-  gap: 1.6rem;
+  display: flex;
+  justify-content: center;
   align-items: center;
-  padding: 1.4rem 2rem;
+  padding: 2.5rem 2rem;
   border-bottom: 1px solid var(--line);
+  background: var(--card);
 }
 .ring-box   { text-align: center; position: relative; }
 .ring-rating { 
@@ -397,8 +397,8 @@ input:focus { border-color: var(--green); }
   margin-top: .4rem; text-transform: uppercase; letter-spacing: .05em;
   white-space: nowrap;
 }
-.ring-val   { font-family: var(--mono); font-size: 1.6rem; color: var(--green); line-height: 1; margin-top: .2rem; }
-.ring-lbl   { font-family: var(--mono); font-size: .64rem; color: var(--sub); letter-spacing: .1em; text-transform: uppercase; }
+.ring-val   { font-family: var(--mono); font-size: 2.2rem; line-height: 1; margin: .1rem 0; font-weight: 500; }
+.ring-lbl   { font-family: var(--mono); font-size: .68rem; color: var(--sub); letter-spacing: .12em; text-transform: uppercase; }
 .pillar     { background: var(--card); border: 1px solid var(--line); border-radius: var(--rad); padding: 1rem 1.2rem; box-shadow: 0 2px 8px rgba(0,0,0,0.03); }
 .pillar-lbl { font-family: var(--mono); font-size: .68rem; color: var(--sub); text-transform: uppercase; letter-spacing: .09em; margin-bottom: .3rem; }
 .pillar-val { font-family: var(--mono); font-size: 1.3rem; margin-bottom: .5rem; }

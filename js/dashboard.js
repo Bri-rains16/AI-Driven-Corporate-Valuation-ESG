@@ -129,24 +129,19 @@ function renderAll() {
 
   // ESG ring
   const arc = document.getElementById('ring-arc');
-  const score = Math.round(c.esg.t); // Use mapped esg.t
-  const offset = 226 - (226 * score) / 100; // Stroke dasharray is 226 in index.html
+  const score = Math.round(c.esg.t);
+  const offset = 226 - (226 * score) / 100;
   arc.style.strokeDashoffset = offset;
+  
+  // Set color based on score
+  const color = score >= 70 ? 'var(--green)' : score >= 50 ? 'var(--amber)' : 'var(--red)';
+  arc.style.stroke = color;
+  document.getElementById('ring-v').style.color = color;
+  
   document.getElementById('ring-v').textContent = score;
-  document.getElementById('v-rating').textContent = score >= 70 ? 'STRONG ESG' : score >= 50 ? 'STABLE' : 'RISK-WATCH';
-  document.getElementById('v-rating').style.color = score >= 70 ? 'var(--green)' : score >= 50 ? 'var(--amber)' : 'var(--red)';
+  document.getElementById('v-rating').textContent = score >= 70 ? 'STRONG ESG' : score >= 50 ? 'MODERATE' : 'WEAK ESG';
+  document.getElementById('v-rating').style.color = color;
 
-  // ESG Pillars
-  document.getElementById('e-v').textContent = c.esg.e;
-  document.getElementById('s-v').textContent = c.esg.s;
-  document.getElementById('g-v').textContent = c.esg.g;
-
-  // Animate bar fills after a tiny delay so CSS transition plays
-  setTimeout(() => {
-    document.getElementById('e-bar').style.width = c.esg.e + '%';
-    document.getElementById('s-bar').style.width = c.esg.s + '%';
-    document.getElementById('g-bar').style.width = c.esg.g + '%';
-  }, 60);
 
   // Metric cards
   document.getElementById('m-iv').textContent = '₹ ' + c.dcf.iv.toLocaleString('en-IN');
