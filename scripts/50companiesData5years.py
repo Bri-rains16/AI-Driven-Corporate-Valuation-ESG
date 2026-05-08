@@ -37,11 +37,11 @@ def fetch_and_calculate_financials(ticker_list):
                 
                 if inc_stmt.empty or bal_sheet.empty or cash_flow.empty:
                     if attempt < max_retries - 1:
-                        print(f"  ⚠️ Blocked by Yahoo. Sleeping for 5 seconds and retrying (Attempt {attempt + 2}/{max_retries})...")
+                        print(f"   Blocked by Yahoo. Sleeping for 5 seconds and retrying (Attempt {attempt + 2}/{max_retries})...")
                         time.sleep(5)
                         continue 
                     else:
-                        print(f"  ❌ Missing core financial statements after 3 attempts. Skipping.")
+                        print(f"   Missing core financial statements after 3 attempts. Skipping.")
                         break 
                 
                 df = pd.concat([inc_stmt, bal_sheet, cash_flow], axis=1)
@@ -81,14 +81,14 @@ def fetch_and_calculate_financials(ticker_list):
                 ticker_df = ticker_df[final_columns]
                 
                 all_data.append(ticker_df)
-                print(f"  ✅ Success")
+                print(f"  Success")
                 break 
                 
             except Exception as e:
-                print(f"  ❌ Error: {e}")
+                print(f"  Error: {e}")
                 break
         
-        # Gentle delay between successful pulls
+        # delay between success
         time.sleep(2.5) 
         
     if all_data:
@@ -101,6 +101,6 @@ final_dataset = fetch_and_calculate_financials(tickers)
 
 if not final_dataset.empty:
     final_dataset.to_csv("yfinance_engineered_financials.csv", index=False)
-    print("\n🎉 Extraction complete! Data saved to 'yfinance_engineered_financials.csv'")
+    print("\n Extraction complete! Data saved to 'yfinance_engineered_financials.csv'")
 else:
-    print("\n⚠️ No data was extracted.")
+    print("\n No data was extracted.")

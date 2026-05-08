@@ -241,10 +241,10 @@ input:focus { border-color: var(--green); }
 .auth-note   { font-size: .78rem; color: var(--sub); line-height: 1.65; margin-top: .6rem; }
 .g-note-txt  { font-family: var(--mono); font-size: .64rem; color: var(--sub); text-align: center; margin-top: .5rem; }
 
-/* ── 7. DASHBOARD LAYOUT ─────────────────────────────────── */
+/*7. DASHBOARD LAYOUT*/
 .dash { display: grid; grid-template-columns: 260px 1fr; min-height: 100vh; }
 
-/* ── 8. SIDEBAR ──────────────────────────────────────────── */
+/*8. SIDEBAR*/
 .sidebar { background: var(--card); border-right: 1px solid var(--line); display: flex; flex-direction: column; }
 .sb-logo {
   display: flex; align-items: center; justify-content: space-between;
@@ -311,7 +311,7 @@ input:focus { border-color: var(--green); }
 }
 .out-btn:hover { color: var(--red); border-color: var(--red); }
 
-/* ── 9. MAIN PANEL ───────────────────────────────────────── */
+/* ── 9. MAIN PANEL*/
 .main { overflow-y: auto; background: var(--bg); }
 .topbar {
   display: flex; align-items: center; justify-content: space-between;
@@ -358,7 +358,7 @@ input:focus { border-color: var(--green); }
 .ba { border-color: rgba(208,138,0,.25);  color: var(--amber); background: var(--amber-bg); }
 .bb { border-color: rgba(52,130,216,.25); color: var(--blue);  background: var(--blue-bg);  }
 
-/* ── 10. ESG ROW ─────────────────────────────────────────── */
+/* ── 10. ESG ROW*/
 .esg-row {
   display: flex;
   justify-content: center;
@@ -382,7 +382,7 @@ input:focus { border-color: var(--green); }
 .bar        { height: 5px; background: var(--card2); border-radius: 3px; overflow: hidden; }
 .bar-fill   { height: 100%; border-radius: 3px; transition: width .9s cubic-bezier(.4,0,.2,1); }
 
-/* ── 11. METRICS ROW ─────────────────────────────────────── */
+/* ── 11. METRICS ROW */
 .metrics { display: grid; grid-template-columns: repeat(4,1fr); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
 .metric  { padding: 1.2rem 1.6rem; border-right: 1px solid var(--line); }
 .metric:last-child  { border-right: none; }
@@ -394,14 +394,14 @@ input:focus { border-color: var(--green); }
 .dn  { color: var(--red);   }
 .dim { color: var(--sub);   }
 
-/* ── 12. CHARTS ──────────────────────────────────────────── */
+/* ── 12. CHARTS */
 .charts    { display: grid; grid-template-columns: 1fr 1fr; gap: 1.4rem; padding: 1.6rem 2rem; }
 .chart-box { background: var(--card); border: 1px solid var(--line); border-radius: var(--rad); padding: 1.4rem; box-shadow: 0 2px 8px rgba(0,0,0,0.03); }
 .chart-box.wide { grid-column: 1 / -1; }
 .ct-title { font-family: var(--mono); font-size: .72rem; color: var(--sub); letter-spacing: .09em; text-transform: uppercase; margin-bottom: .2rem; }
 .ct-sub   { font-family: var(--mono); font-size: .64rem; color: var(--sub); margin-bottom: 1rem; }
 
-/* ── 13. DCF CARDS & PIPELINE ────────────────────────────── */
+/* ── 13. DCF CARDS & PIPELINE  */
 .sec-row   { padding: 1.4rem 2rem .5rem; font-family: var(--mono); font-size: .68rem; color: var(--sub); letter-spacing: .12em; text-transform: uppercase; }
 .dcf-cards { display: grid; grid-template-columns: repeat(3,1fr); gap: 1rem; padding: 0 2rem 1.4rem; }
 .dcf-card  { background: var(--card); border: 1px solid var(--line); border-radius: var(--rad); padding: 1.2rem 1.3rem; box-shadow: 0 2px 8px rgba(0,0,0,0.03); }
@@ -415,7 +415,7 @@ input:focus { border-color: var(--green); }
 .pc-title   { font-family: var(--mono); font-size: .76rem; color: var(--text); text-transform: uppercase; letter-spacing: .07em; margin-bottom: .3rem; }
 .pc-desc    { font-size: .8rem; color: var(--sub); line-height: 1.65; }
 
-/* ── 14. TOAST ───────────────────────────────────────────── */
+/*14. TOAST*/
 .toast {
   position: fixed; bottom: 1.5rem; right: 1.5rem;
   background: var(--card); border: 1px solid var(--green);
@@ -427,7 +427,7 @@ input:focus { border-color: var(--green); }
 }
 .toast.show { opacity: 1; transform: none; }
 
-/* ── 15. ANIMATIONS ──────────────────────────────────────── */
+/* 15. ANIMATIONS*/
 @keyframes up {
   from { opacity: 0; transform: translateY(14px); }
   to   { opacity: 1; transform: none; }
@@ -440,7 +440,7 @@ input:focus { border-color: var(--green); }
 .d5 { animation-delay: .28s; }
 .d6 { animation-delay: .34s; }
 
-/* ── 16. LOADING STATE ───────────────────────────────────── */
+/*16. LOADING STATE*/
 .loading { pointer-events: none; opacity: 0.5; transition: opacity .3s; }
 @keyframes shimmer {
   0% { background-position: -468px 0; }

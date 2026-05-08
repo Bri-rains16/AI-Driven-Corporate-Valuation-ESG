@@ -1,23 +1,6 @@
-/*
- * js/dashboard.js
- * ─────────────────────────────────────────────────────────────
- * PURPOSE: Everything inside the dashboard page.
- *   - Builds and filters the sidebar company list
- *   - Loads a company when clicked (populates all fields)
- *   - Handles the forecast year input (GO button)
- *
- * DEPENDS ON: data.js (STATE, COS), charts.js (renderCharts)
- * CALLED BY:  auth.js (showDash calls buildList)
- *             index.html (filterCos, goFC, loadCo via onclick)
- * ─────────────────────────────────────────────────────────────
- */
-
-// ── ESG PILL COLOUR ───────────────────────────────────────────
-// Returns CSS class for the ESG score badge in the sidebar
 const esgCls = score => score >= 75 ? 'hi' : score >= 65 ? 'md' : 'lo';
 
-// ── BUILD COMPANY LIST ────────────────────────────────────────
-// Renders the sidebar list. Pass a filtered subset for search.
+// Sidebar list management
 function buildList(arr) {
   const listEl = document.getElementById('co-list');
   if (arr.length === 0) {
@@ -37,8 +20,7 @@ function buildList(arr) {
   `).join('');
 }
 
-// ── FILTER COMPANIES ──────────────────────────────────────────
-// Called by the search input in the sidebar (oninput in HTML)
+// Search filtering
 function filterCos(query) {
   const q = query.toLowerCase();
   const filtered = q
@@ -113,7 +95,7 @@ async function runValuation(ticker) {
   }
 }
 
-//RENDER ALL predicted COMPANY DATA ───────────────────────────────────
+// Data rendering
 function renderAll() {
   const c = STATE.co;
   if (!c) return;

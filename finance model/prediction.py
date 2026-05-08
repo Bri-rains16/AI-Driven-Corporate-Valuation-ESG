@@ -1,8 +1,3 @@
-# =========================================================
-# DCF DRIVER ML PREDICTION ENGINE
-# Restructured to be importable by fusion_layer.py
-# =========================================================
-
 import os
 import pandas as pd
 import numpy as np
@@ -11,10 +6,7 @@ from sklearn.ensemble import RandomForestRegressor
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-# =========================================================
-# INTERNAL HELPERS
-# =========================================================
-
+#INTERNAL HELPERS
 def _find_col(df, names):
     for name in names:
         for col in df.columns:
@@ -115,9 +107,7 @@ def _forecast(latest_row, models, features, forecast_years):
             current[k] = pred[k]
     return pd.DataFrame(results)
 
-# =========================================================
 # PUBLIC API — called by fusion_layer.py
-# =========================================================
 
 def get_financial_predictions(ticker, forecast_years=5, csv_path=None):
     """
@@ -148,10 +138,7 @@ def get_financial_predictions(ticker, forecast_years=5, csv_path=None):
         "depreciation_pct": year1["depreciation_pct"],
         "full_forecast":    forecast_df.to_dict(orient="records"),
     }
-
-# =========================================================
 # INTERACTIVE USAGE (unchanged behaviour)
-# =========================================================
 
 if __name__ == "__main__":
     df, revenue_col = _load_and_prepare()

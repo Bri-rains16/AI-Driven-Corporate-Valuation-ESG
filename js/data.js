@@ -1,46 +1,16 @@
-/*
- * js/data.js
- * ─────────────────────────────────────────────────────────────
- * PURPOSE: Company dataset + shared application state object.
- *
- * WHY A STATE OBJECT?
- *   All JS files (auth, dashboard, charts) need to share the
- *   same `user`, `co` (selected company), and `yrs` (forecast
- *   years). Instead of separate global variables that are easy
- *   to lose track of, we use one `STATE` object. Any file can
- *   read or write STATE.user, STATE.co, etc.
- *
- * LOADED FIRST — all other JS files depend on this.
- * ─────────────────────────────────────────────────────────────
- */
-
-// ── GOOGLE OAUTH CLIENT ID ────────────────────────────────────
-// To enable Google sign-in:
-//   1. console.cloud.google.com → APIs & Services → Credentials
-//   2. Create OAuth 2.0 Client ID (Web application)
-//   3. Paste the client ID below
-
-
-// ── LOCAL STORAGE KEY ─────────────────────────────────────────
-// The key used to persist the logged-in user in the browser.
-// Changing this logs everyone out (useful for breaking changes).
 const SESSION_KEY = 'vESG_session';
 
-// ── SHARED APPLICATION STATE ──────────────────────────────────
-// Single source of truth. Read and write from any JS file.
 const STATE = {
-  user: null,   // { name, email, pic? } — set on login, cleared on logout
-  co:   null,   // currently selected company object from API
-  yrs:  5,      // forecast horizon (years) — changed by the GO button
-  selectedTicker: null, // tracked when user clicks sidebar but before GO is clicked
+  user: null,   
+  co:   null,   
+  yrs:  5,      
+  selectedTicker: null,
 };
 
-// ── COMPANY DATA ──────────────────────────────────────────────
+// Company list
 let COS = [];
 
-/**
- * Fetches the list of companies from the backend.
- */
+// Fetches the list of companies from the backend.
 async function fetchCompanies() {
   try {
     const res = await fetch('/api/companies');
@@ -54,9 +24,8 @@ async function fetchCompanies() {
   }
 }
 
-/**
- * Runs the real-time valuation for a given ticker and forecast horizon.
- */
+
+//Runs the real-time valuation for a given ticker and forecast horizon.
 async function fetchValuation(ticker, years) {
   try {
     const res = await fetch(`/api/valuation/${ticker}?years=${years}`);
@@ -97,9 +66,10 @@ async function fetchValuation(ticker, years) {
     const fcf = [];
 
     (data.financial.absolute_projections || []).forEach(p => {
-      rev.push(Math.round(p.revenue / 1e7));
-      ebitda.push(Math.round(p.ebitda / 1e7));
-      fcf.push(Math.round(p.fcf / 1e7));
+      // Convert raw Rupees to Crores (1e7) and keep precision for smaller metrics
+      rev.push(parseFloat((p.revenue / 1e7).toFixed(1)));
+      ebitda.push(parseFloat((p.ebitda / 1e7).toFixed(1)));
+      fcf.push(parseFloat((p.fcf / 1e7).toFixed(1)));
     });
 
     return { ...mapped, rev, ebitda, fcf };
@@ -111,11 +81,11 @@ async function fetchValuation(ticker, years) {
   }
 }
 
-// ── UTILS ─────────────────────────────────────────────────────
+// Utilities
 function toast(msg) {
   const el = document.getElementById('toast');
   if (!el) return;
   el.textContent = msg;
   el.classList.add('show');
   setTimeout(() => el.classList.remove('show'), 3000);
-}
+}

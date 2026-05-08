@@ -1,36 +1,3 @@
-/*
- * backend/server.js
- * ─────────────────────────────────────────────────────────────
- * PURPOSE: Express backend for ValuESG.
- *
- * ROUTES:
- *   POST /register  — create account, send welcome email
- *   POST /login     — validate credentials, send login notification
- *   GET  /ping      — health check
- *   GET  /me        — verify session token (optional, for future use)
- *
- * USER PERSISTENCE:
- *   Users are stored in users.json (same folder as this file).
- *   The file is read on startup and written on every register.
- *   This means user accounts survive server restarts — unlike
- *   the old in-memory `const users = []` approach.
- *
- * SESSION PERSISTENCE:
- *   The browser stores the logged-in user in localStorage.
- *   So even if the server restarts, the user stays "logged in"
- *   on the frontend. When they interact again the server still
- *   recognises them because their account is in users.json.
- *
- * EMAIL:
- *   Uses Resend (https://resend.com) — free tier sends 100/day.
- *   Set RESEND_API_KEY in your .env file.
- *
- * STATIC FILES:
- *   Serves index.html and all frontend files from the parent
- *   folder (Minor 2/). Open http://localhost:3000 to use the app.
- * ─────────────────────────────────────────────────────────────
- */
-
 const express = require('express');
 const cors = require('cors');
 const fs = require('fs');
@@ -45,12 +12,11 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 app.use(cors());
 app.use(express.json());
 
-// Serve the entire Minor 2 folder as static files.
 // This means http://localhost:3000 → index.html
 // and http://localhost:3000/css/style.css etc. all work.
 app.use(express.static(path.join(__dirname, '..')));
 
-// ── USER PERSISTENCE (users.json) ────────────────────────────
+// USER PERSISTENCE (users.json) 
 const USERS_FILE = path.join(__dirname, 'users.json');
 
 // Load existing users from disk on startup.
@@ -60,7 +26,7 @@ function loadUsers() {
   try {
     return JSON.parse(fs.readFileSync(USERS_FILE, 'utf8'));
   } catch (e) {
-    console.error('⚠  Could not parse users.json — starting fresh.');
+    console.error(' Could not parse users.json — starting fresh.');
     return [];
   }
 }
@@ -79,12 +45,12 @@ function saveUsers(users) {
 let users = loadUsers();
 console.log(`👥 Loaded ${users.length} user(s) from users.json`);
 
-// ── EMAIL SENDER ADDRESS ──────────────────────────────────────
+//EMAIL SENDER ADDRESS
 // Resend free tier only allows sending FROM onboarding@resend.dev
 // unless you verify your own domain at resend.com/domains.
 const FROM = 'ValuESG <onboarding@resend.dev>';
 
-// ── EMAIL: WELCOME ────────────────────────────────────────────
+// EMAIL: WELCOME
 async function sendWelcomeEmail(toEmail, name) {
   const { error } = await resend.emails.send({
     from: FROM,
@@ -121,7 +87,7 @@ async function sendWelcomeEmail(toEmail, name) {
   if (error) throw new Error(error.message);
 }
 
-// ── EMAIL: ANNUAL BRSR REMINDER ───────────────────────────────
+// Annual reminder email
 // Sent 1 year after registration to invite the user back.
 async function sendAnniversaryEmail(toEmail, name) {
   const year = new Date().getFullYear();
@@ -157,7 +123,7 @@ async function sendAnniversaryEmail(toEmail, name) {
   if (error) throw new Error(error.message);
 }
 
-// ── EMAIL: LOGIN NOTIFICATION ─────────────────────────────────
+// Login notification email
 async function sendLoginEmail(toEmail, name) {
   const { error } = await resend.emails.send({
     from: FROM,
@@ -187,7 +153,7 @@ async function sendLoginEmail(toEmail, name) {
   if (error) throw new Error(error.message);
 }
 
-// ── ROUTES ────────────────────────────────────────────────────
+// API Routes
 
 // POST /register
 // Creates a new user account, saves to users.json, sends welcome email.
@@ -264,7 +230,7 @@ app.get('/me', (req, res) => {
   return res.json({ name: user.name, email: user.email });
 });
 
-// ── COMPANY REGISTRY ──────────────────────────────────────────
+// Company data registry
 // Shared with fusion_layer.py — maps ticker to name, sector, and PDF.
 const COMPANIES = [
   { id: 'infy', name: 'Infosys Ltd',             ticker: 'INFY.NS',       sector: 'IT',        pdf: 'infosys-ar-24.pdf' },
@@ -337,7 +303,7 @@ const pythonExecutable = process.platform === 'win32'
   });
 });
 
-// ── START ─────────────────────────────────────────────────────
+// Server startup
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`\n🚀 Server → http://localhost:${PORT}`);

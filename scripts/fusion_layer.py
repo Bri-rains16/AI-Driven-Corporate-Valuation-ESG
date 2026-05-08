@@ -26,20 +26,25 @@ def calculate_fcf(revenue, ebitda_margin, tax_rate, depreciation_pct, capex_pct,
     return nopat + depreciation - capex - delta_nwc
 
 def get_absolute_projections(fin, tax_rate, forecast_years):
-    """
-    Converts ML growth rates/margins into a list of absolute ₹ values per year.
-    """
     projections = []
-    curr_rev = fin["base_revenue"]
+
+    curr_rev = float(fin.get("base_revenue", 0))
     
-    for f in fin["full_forecast"][:forecast_years]:
-        curr_rev *= (1 + f["revenue_growth"])
+    for f in fin.get("full_forecast", [])[:forecast_years]:
+ 
+        curr_rev *= (1 + f.get("revenue_growth", 0))
         revenue = curr_rev
-        ebitda  = revenue * f["ebitda_margin"]
-        fcf     = calculate_fcf(
-            revenue, f["ebitda_margin"], tax_rate, 
-            f["depreciation_pct"], f["capex_pct"], f["wc_pct"]
+
+        margin = f.get("ebitda_margin", 0.15)
+        ebitda = revenue * margin
+
+        fcf = calculate_fcf(
+            revenue, margin, tax_rate, 
+            f.get("depreciation_pct", 0.03), 
+            f.get("capex_pct", 0.05), 
+            f.get("wc_pct", 0.02)
         )
+        
         projections.append({
             "year": f.get("year", 0),
             "revenue": round(revenue, 2),
@@ -85,9 +90,6 @@ def run_monte_carlo(base_fcf, adjusted_wacc, terminal_growth_rate, num_years):
 
 
 def calculate_dcf(fcf_array, wacc, terminal_growth, num_years):
-    """
-    Sum of PV of explicit FCFs + PV of terminal value.
-    """
     pv = 0.0
     for t, fcf in enumerate(fcf_array):
         pv += fcf / ((1 + wacc) ** (t + 1))
@@ -114,12 +116,12 @@ COMPANIES = [
 
 def run_valuation(ticker, pdf_path, forecast_years):
 
-    # STEP 1: Financial ML predictions
+    # Core valuation process
     fin = get_financial_predictions(ticker, forecast_years)
     if fin is None:
         return {"error": f"Ticker '{ticker}' not found in financial dataset."}
 
-    # STEP 2: ESG Score + Adjusted WACC from NLP pipeline
+    # Integrate ESG scores
     if pdf_path and os.path.exists(pdf_path):
         esg_result    = get_esg_score(pdf_path)
         esg_score     = esg_result["final_score"]
@@ -134,24 +136,20 @@ def run_valuation(ticker, pdf_path, forecast_years):
         gw_penalty    = 0.0
         esg_source    = "fallback (no PDF)"
 
-    # STEP 3: Convert ML percentages into Absolute ₹ Projections
+    # Map growth rates to absolute ₹ amounts
     abs_projections = get_absolute_projections(fin, TAX_RATE, forecast_years)
     fcf_forecast    = [p["fcf"] for p in abs_projections]
     base_fcf        = fcf_forecast[0]
 
-    # STEP 4: Terminal growth rate
     BASE_WACC       = 0.10
     terminal_growth = max(fin["revenue_growth"] * 0.5, 0.02)
 
-    # STEP 5: Before-ESG valuation
     dcf_before = calculate_dcf(fcf_forecast, BASE_WACC, terminal_growth, forecast_years)
     mc_before  = run_monte_carlo(base_fcf, BASE_WACC, terminal_growth, forecast_years)
 
-    # STEP 6: After-ESG valuation
     dcf_after = calculate_dcf(fcf_forecast, adjusted_wacc, terminal_growth, forecast_years)
     mc_after  = run_monte_carlo(base_fcf, adjusted_wacc, terminal_growth, forecast_years)
 
-    # STEP 7: ESG impact summary
     wacc_delta_pct = round((adjusted_wacc - BASE_WACC) * 100, 4)
     dcf_delta      = round(dcf_after - dcf_before, 2)
     dcf_delta_pct  = round((dcf_delta / dcf_before) * 100, 2) if dcf_before != 0 else 0
@@ -201,10 +199,9 @@ def run_valuation(ticker, pdf_path, forecast_years):
     }
 
 
-# ── Pretty Print (for interactive terminal use) ──────────────────────────────
+# Formatting numbers intocrores
 
 def fmt(val):
-    """Format large numbers as readable crores/millions."""
     if abs(val) >= 1e9:
         return f"₹{val/1e7:,.2f} Cr"
     elif abs(val) >= 1e6:
@@ -272,17 +269,16 @@ def pretty_print(result):
     print(f"{'='*70}\n")
 
 
-# ── Interactive Mode 
+# Interactive Mode
 
 def interactive_mode():
     print("\n" + "=" * 62)
     print("  AI-DRIVEN CORPORATE VALUATION — FUSION LAYER")
-    print("  JIIT Minor Project 2 | Even Sem 2026")
     print("=" * 62)
 
     print(f"\n  Companies with BRSR reports available ({len(COMPANIES)}):\n")
     for i, c in enumerate(COMPANIES, 1):
-        pdf_status = "✅" if os.path.exists(c["pdf"]) else "❌ PDF missing"
+        pdf_status = "Yes" if os.path.exists(c["pdf"]) else " PDF missing"
         print(f"    {i}. {c['name']:<30}  ({c['ticker']})  {pdf_status}")
 
     if len(COMPANIES) == 1:

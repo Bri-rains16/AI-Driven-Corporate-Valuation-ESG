@@ -1,27 +1,7 @@
-/*
- * js/auth.js
- * ─────────────────────────────────────────────────────────────
- * PURPOSE: All authentication and session management.
- *
- * RESPONSIBILITIES:
- *   1. Page navigation (showLanding / showAuth / showDash)
- *   2. AUTH GUARD — showDash() blocks unauthenticated access
- *   3. Login & Register (calls backend server.js API)
- *   4. Session persistence via localStorage
- *      → Session survives server restarts because it lives
- *        in the browser, not in server memory.
- *   5. Logout (clears session)
- *   6. Toast utility
- *
- * LOADED LAST — depends on data.js, charts.js, dashboard.js
- * ─────────────────────────────────────────────────────────────
- */
-
-// ── SERVER URL ────────────────────────────────────────────────
-// Change this if your backend runs on a different port.
+// Authentication and session management
 const API = 'http://127.0.0.1:3000';
 
-// ── PAGE NAVIGATION ───────────────────────────────────────────
+// Page navigation
 
 function showLanding() {
   pg('landing');
@@ -58,7 +38,7 @@ function pg(id) {
   window.scrollTo(0, 0);
 }
 
-// ── SESSION PERSISTENCE ───────────────────────────────────────
+// Session persistence
 // localStorage keeps the user logged in even when:
 //   • The browser tab is closed and reopened
 //   • The server (server.js) is stopped and restarted
@@ -79,7 +59,7 @@ function clearSession() {
   try { localStorage.removeItem(SESSION_KEY); } catch(e) {}
 }
 
-// ── AUTH FORM TABS ────────────────────────────────────────────
+// UI Tabs
 
 function switchTab(t) {
   document.getElementById('tab-in').classList.toggle('on', t === 'in');
@@ -88,7 +68,7 @@ function switchTab(t) {
   document.getElementById('f-up').style.display = t === 'up' ? '' : 'none';
 }
 
-// ── LOGIN ─────────────────────────────────────────────────────
+// Login logic
 async function doLogin() {
   const email    = document.getElementById('li-email').value.trim();
   const password = document.getElementById('li-pass').value;
@@ -113,7 +93,7 @@ async function doLogin() {
   }
 }
 
-// ── REGISTER ──────────────────────────────────────────────────
+// Registration logic
 async function doRegister() {
   const name     = document.getElementById('ru-name').value.trim();
   const email    = document.getElementById('ru-email').value.trim();
@@ -141,7 +121,7 @@ async function doRegister() {
   }
 }
 
-// ── ON SUCCESSFUL LOGIN ───────────────────────────────────────
+// Success callback
 // Called after any successful auth (email login, register).
 function loginSuccess(u) {
   STATE.user = u;
@@ -151,7 +131,7 @@ function loginSuccess(u) {
   toast('Welcome, ' + u.name.split(' ')[0] + '!');
 }
 
-// ── UPDATE USER UI ────────────────────────────────────────────
+// UI Updates
 // Sets the avatar initials, name, and email in the sidebar footer.
 function applyUserUI() {
   if (!STATE.user) return;
@@ -165,7 +145,7 @@ function applyUserUI() {
   document.getElementById('uemail').textContent = STATE.user.email;
 }
 
-// ── LOGOUT ────────────────────────────────────────────────────
+// Logout logic
 function logout() {
   STATE.user = null;
   STATE.co   = null;
@@ -178,7 +158,7 @@ function logout() {
   showLanding();
 }
 
-// ── TOAST NOTIFICATION ────────────────────────────────────────
+// Notifications
 // Global utility — call toast('message') from any JS file.
 function toast(msg) {
   const el = document.getElementById('toast');
@@ -187,7 +167,7 @@ function toast(msg) {
   setTimeout(() => el.classList.remove('show'), 2800);
 }
 
-// ── BOOT — ALWAYS SHOW LANDING PAGE FIRST ─────────────────────
+// Initialization
 // On page load, always show the landing (home) page.
 // If a saved session exists, restore user state silently so
 // "GET STARTED" / "SIGN IN" will skip auth and go to dashboard.

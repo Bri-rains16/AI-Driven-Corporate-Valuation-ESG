@@ -59,7 +59,7 @@ def clean_text_greenwash(text: str) -> str:
     words = [w for w in words if w not in light_stopwords and len(w) > 1]
     return " ".join(words)
 
-# STEP 1 — RULE-BASED METRIC EXTRACTION
+# Pattern matching for ESG metrics
 
 ESG_PATTERNS = {
     "carbon_emissions_tCO2"    : r"(\d[\d,\.]*)\s*(million\s*)?(metric tons?|tCO2|tonnes?|MT)\s*(of\s*)?(CO2|carbon|GHG)?",
@@ -107,9 +107,7 @@ def load_csv(filepath: str) -> tuple:
 
 
 
-# STEP 2 — ESG CLASSIFICATION MODEL
-# Trains on train_data.csv, tests on test_data.csv
-# Labels: Positive ESG / Negative ESG / Neutral
+# Training the classifier (Positive/Negative/Neutral)
 
 def train_esg_model(train_csv: str, test_csv: str):
     print(f"\n  Loading ESG training data : {train_csv}")
@@ -146,7 +144,7 @@ def train_esg_model(train_csv: str, test_csv: str):
     return model
 
 
-# STEP 3 — CLASSIFY REPORT SENTENCES (ESG labels)
+# Sentence analysis
 def classify_report(text: str, model) -> pd.DataFrame:
     sentences  = split_into_sentences(text)
     cleaned    = [clean_text(s) for s in sentences]
@@ -168,7 +166,7 @@ def show_classification_results(df: pd.DataFrame):
         print(f"  {icons[label]}  {label:<20}: {count} sentences")
     print(f"{'='*62}")
 
-# STEP 4 — RAW ESG SCORE
+# Score aggregation
 def calculate_raw_esg_score(df: pd.DataFrame) -> dict:
     positive = len(df[df["Label"] == "Positive ESG"])
     negative = len(df[df["Label"] == "Negative ESG"])
@@ -177,7 +175,7 @@ def calculate_raw_esg_score(df: pd.DataFrame) -> dict:
     return {"positive": positive, "negative": negative, "neutral": neutral, "raw_esg_score": score}
 
 
-# STEP 5 — GREENWASHING DETECTION MODEL
+# Detection for "fluff" or vague claims
 
 def train_greenwash_model(train_csv: str, test_csv: str):
     """
@@ -404,7 +402,7 @@ def get_esg_score(pdf_path: str) -> dict:
 
     final = calculate_final_score(raw, gw)
     return final
-# MAIN
+# Internal API
 if __name__ == "__main__":
 
     print("\n" + "#"*62)

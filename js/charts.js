@@ -1,23 +1,5 @@
-/*
- * js/charts.js
- * ─────────────────────────────────────────────────────────────
- * PURPOSE: All Chart.js chart rendering.
- *
- * CHARTS:
- *   ch1 — Revenue / EBITDA / FCF forecast (wide line chart)
- *   ch2 — Monte Carlo valuation distribution (bar chart)
- *   ch3 — FCF Yield % over forecast horizon (line chart)
- *
- * DEPENDS ON: data.js (STATE, COS must be loaded first)
- * CALLED BY:  dashboard.js → renderAll() → renderCharts()
- * ─────────────────────────────────────────────────────────────
- */
-
-// Chart.js instances — kept so we can destroy before re-rendering
 let ch1 = null, ch2 = null, ch3 = null;
 
-// ── SHARED CHART STYLE CONSTANTS ─────────────────────────────
-// Tooltip style matching the light theme
 const TT = {
   backgroundColor: 'rgba(255,255,255,.98)',
   borderColor:     'rgba(0,0,0,.1)',
@@ -30,12 +12,8 @@ const TT = {
   cornerRadius: 8,
   displayColors: true
 };
-// Axis tick style
 const TX = { color: '#6a7070', font: { size: 12, weight: '500' } };
-// Grid line style
 const GR = { color: 'rgba(0,0,0,.05)', drawBorder: false };
-
-// ── HELPERS ───────────────────────────────────────────────────
 
 // Normal (Gaussian) probability density function — used for Monte Carlo bell curve
 function npdf(x, mean, sigma) {
@@ -61,7 +39,7 @@ function extrapolate(arr, targetYears) {
   return result;
 }
 
-// ── MAIN RENDER FUNCTION ──────────────────────────────────────
+// Chart rendering
 // Called by dashboard.js every time a company is selected or forecast years change.
 function renderCharts() {
   const c = STATE.co;
@@ -78,7 +56,7 @@ function renderCharts() {
   const ebitdaData = extrapolate(c.ebitda, n);
   const fcfData    = extrapolate(c.fcf,    n);
 
-  // ── CHART 1: Revenue / EBITDA / FCF forecast ──────────────
+  // Revenue/EBITDA/FCF Forecast
   ch1 = new Chart(document.getElementById('cForecast'), {
     type: 'line',
     data: {
@@ -119,11 +97,14 @@ function renderCharts() {
         tooltip: {
           ...TT,
           callbacks: {
-            label: ctx => ` ${ctx.dataset.label}: ₹${
-              ctx.raw >= 100000
-                ? (ctx.raw / 100000).toFixed(2) + 'L Cr'
-                : (ctx.raw / 1000).toFixed(1)   + 'K Cr'
-            }`,
+            label: ctx => {
+              const v = ctx.raw;
+              let txt = ` ${ctx.dataset.label}: ₹`;
+              if (v >= 100000)      txt += (v / 100000).toFixed(2) + 'L Cr';
+              else if (v >= 1000)   txt += (v / 1000).toFixed(1)   + 'K Cr';
+              else                  txt += v.toFixed(1)            + ' Cr';
+              return txt;
+            },
           },
         },
       },
@@ -144,7 +125,7 @@ function renderCharts() {
     },
   });
 
-  // ── CHART 2: Monte Carlo distribution histogram ────────────
+  // Monte Carlo Distribution
   const { p5, p50, p95 } = c.mc;
   const bins = 13;
   const step = (p95 - p5) / bins;
